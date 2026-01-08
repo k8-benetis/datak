@@ -70,6 +70,36 @@ services:
       - influxdb
     restart: unless-stopped
 
+  backend:
+    build: ../backend
+    container_name: datak-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DATAK_INFLUXDB_URL=http://influxdb:8086
+      - DATAK_MQTT_BROKER=mosquitto
+      - DATAK_DATABASE_URL=sqlite+aiosqlite:///data/gateway.db
+    volumes:
+      - ../backend:/app
+      - backend_data:/data
+    depends_on:
+      - influxdb
+      - mosquitto
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: datak-frontend
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://100.95.129.22:8000
+    depends_on:
+      - backend
+    restart: unless-stopped
+
 volumes:
   influxdb_data:
   influxdb_config:

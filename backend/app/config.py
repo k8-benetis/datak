@@ -57,7 +57,11 @@ class Settings(BaseSettings):
     api_port: int = 8000
     api_host: str = "0.0.0.0"
     api_port: int = 8000
-    api_cors_origins: list[str] = ["http://localhost:5173", "http://localhost:3000"]
+    api_cors_origins: list[str] = [
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://100.95.129.22:5173",
+    ]
 
     # Reports
     reports_enabled: bool = True

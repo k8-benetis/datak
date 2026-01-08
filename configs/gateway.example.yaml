@@ -3,7 +3,7 @@
 
 gateway:
   name: "DaTaK-Gateway-01"
-  log_level: "INFO" # DEBUG, INFO, WARNING, ERROR
+  log_level: "DEBUG" # DEBUG, INFO, WARNING, ERROR
   data_dir: "/opt/datak/data"
 
 # SQLite for configuration and audit

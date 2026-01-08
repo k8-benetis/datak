@@ -48,10 +48,14 @@ function handleLogout() {
           <i class="pi pi-user"></i>
           <span>{{ auth.user?.username }}</span>
         </div>
-        <button class="btn btn-secondary" style="width: 100%;" @click="handleLogout">
-          <i class="pi pi-sign-out"></i>
-          Logout
-        </button>
+        <button class="nav-item" :class="{ active: route.path === '/reports' }" @click="router.push('/reports')">
+        <i class="pi pi-file"></i>
+        <span>Reports</span>
+      </button>
+      <button class="nav-item" :class="{ active: route.path === '/report-jobs' }" @click="router.push('/report-jobs')">
+        <i class="pi pi-cog"></i>
+        <span>Jobs</span>
+      </button>
       </div>
     </aside>
 

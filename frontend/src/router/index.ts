@@ -31,9 +31,15 @@ const routes = [
     },
     {
         path: '/reports',
-        name: 'Reports',
+        name: 'reports',
         component: () => import('../views/ReportsView.vue'),
-        meta: { requiresAuth: true },
+        meta: { requiresAuth: true }
+    },
+    {
+        path: '/report-jobs',
+        name: 'report-jobs',
+        component: () => import('../views/ReportJobsView.vue'),
+        meta: { requiresAuth: true }
     },
     {
         path: '/config',

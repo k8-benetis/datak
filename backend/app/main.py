@@ -16,7 +16,7 @@ import structlog
 from app.config import get_settings
 from app.db.session import init_db, close_db
 from app.db.influx import influx_client
-from app.api.routes import auth, sensors, config, system, websocket
+from app.api.routes import auth, sensors, config, system, websocket, report_jobs
 from app.services.orchestrator import orchestrator
 from app.services.buffer import buffer_queue
 from app.services.csv_engine import csv_generator
@@ -161,6 +161,7 @@ app.include_router(auth.router, prefix="/api")
 app.include_router(sensors.router, prefix="/api")
 app.include_router(config.router, prefix="/api")
 app.include_router(system.router, prefix="/api")
+app.include_router(report_jobs.router, prefix="/api")
 app.include_router(websocket.router)
 
 # Mount Prometheus metrics

@@ -10,11 +10,13 @@ import asyncio
 
 import pandas as pd
 import structlog
+from sqlalchemy import select
 
 from app.config import get_settings
 from app.db.influx import influx_client
 from app.db.session import async_session_factory
 from app.models.sensor import Sensor
+from app.models.report import ReportJob
 
 logger = structlog.get_logger()
 settings = get_settings()
@@ -22,11 +24,6 @@ settings = get_settings()
 
 class CSVReportGenerator:
     """
-    Batch process to generate statistical CSV reports from InfluxDB data.
-    
-    Features:
-        - Configurable intervals (1min, 5min, 10min, 1hour)
-        - Statistics: Mean, Min, Max, StdDev
         - Automatic file rotation
         - Compression of old files
         - Retention policy enforcement

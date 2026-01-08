@@ -35,6 +35,25 @@ async def init_db() -> None:
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
+    # Seed default admin user if not exists
+    async with async_session_factory() as session:
+        from sqlalchemy import select
+        # Import dynamically to avoid circular imports during startup
+        from app.models.user import User, UserRole
+        from app.core.security import hash_password
+
+        result = await session.execute(select(User).limit(1))
+        if not result.scalar_one_or_none():
+            admin = User(
+                username="admin",
+                email="admin@datak.local",
+                password_hash=hash_password("admin"),
+                role=UserRole.ADMIN.value,
+                is_active=True
+            )
+            session.add(admin)
+            await session.commit()
+
 
 async def close_db() -> None:
     """Close database connections."""

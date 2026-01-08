@@ -75,3 +75,5 @@ docker/volumes/
 # OS
 .DS_Store
 Thumbs.db
+scripts/deploy_remote.py
+scripts/check_logs.py

@@ -76,7 +76,9 @@ class Settings(BaseSettings):
     @classmethod
     def from_yaml(cls, config_path: Path) -> "Settings":
         """Load settings from YAML config file."""
+        print(f"DEBUG: Loading config from {config_path.absolute()}")
         if not config_path.exists():
+            print("DEBUG: Config file not found, using defaults")
             return cls()
 
         with open(config_path) as f:
@@ -94,11 +96,21 @@ class Settings(BaseSettings):
                     flat_config[full_key] = value
 
         flatten(config)
+        print(f"DEBUG: Flattened config keys: {list(flat_config.keys())}")
+        if 'api_cors_origins' in flat_config:
+             print(f"DEBUG: Found api_cors_origins: {flat_config['api_cors_origins']}")
+        
         return cls(**flat_config)
 
 
 @lru_cache
 def get_settings() -> Settings:
     """Get cached settings instance."""
-    config_path = Path("configs/gateway.yaml")
-    return Settings.from_yaml(config_path)
+    # Try multiple paths for robustness
+    possible_paths = [Path("/app/configs/gateway.yaml"), Path("configs/gateway.yaml")]
+    for path in possible_paths:
+        if path.exists():
+             return Settings.from_yaml(path)
+    
+    print("DEBUG: No config file found in search paths")
+    return Settings.from_yaml(Path("configs/gateway.yaml"))

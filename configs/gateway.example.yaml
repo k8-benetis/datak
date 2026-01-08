@@ -64,6 +64,7 @@ api:
   cors_origins:
     - "http://localhost:5173"
     - "http://localhost:3000"
+    - "http://100.95.129.22:5173"
 
 # Metrics (Prometheus)
 metrics:

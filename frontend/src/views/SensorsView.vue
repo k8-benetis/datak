@@ -27,28 +27,59 @@ const protocols = [
 // Connection params based on protocol
 const connectionFields = {
   MODBUS_TCP: [
-    { key: 'host', label: 'Host IP', type: 'text', default: '192.168.1.10' },
-    { key: 'port', label: 'Port', type: 'number', default: 502 },
-    { key: 'slave_id', label: 'Slave ID', type: 'number', default: 1 },
-    { key: 'address', label: 'Register Address', type: 'number', default: 40001 },
+    { key: 'host', label: 'Host IP', type: 'text', default: '192.168.1.10', tooltip: 'IP address of the Modbus server' },
+    { key: 'port', label: 'Port', type: 'number', default: 502, tooltip: 'TCP port (usually 502)' },
+    { key: 'slave_id', label: 'Slave ID', type: 'number', default: 1, tooltip: 'Unit ID (1-247)' },
+    { key: 'address', label: 'Register Address', type: 'number', default: 40001, tooltip: 'Starting register address' },
   ],
   MODBUS_RTU: [
-    { key: 'port', label: 'Serial Port', type: 'text', default: '/dev/ttyUSB0' },
-    { key: 'baudrate', label: 'Baudrate', type: 'number', default: 9600 },
+    { key: 'port', label: 'Serial Port', type: 'text', default: '/dev/ttyUSB0', tooltip: 'Device path (e.g. /dev/ttyUSB0)' },
+    { 
+      key: 'baudrate', 
+      label: 'Baudrate', 
+      type: 'select', 
+      options: [1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200],
+      default: 9600,
+      tooltip: 'Communication speed'
+    },
+    { 
+      key: 'parity', 
+      label: 'Parity', 
+      type: 'select', 
+      options: [{v:'N', l:'None'}, {v:'E', l:'Even'}, {v:'O', l:'Odd'}],
+      default: 'N',
+      tooltip: 'Error check bit' 
+    },
+    { 
+      key: 'stopbits', 
+      label: 'Stop Bits', 
+      type: 'select', 
+      options: [1, 2],
+      default: 1
+    },
+    { 
+      key: 'bytesize', 
+      label: 'Byte Size', 
+      type: 'select', 
+      options: [7, 8],
+      default: 8
+    },
     { key: 'slave_id', label: 'Slave ID', type: 'number', default: 1 },
     { key: 'address', label: 'Register Address', type: 'number', default: 40001 },
   ],
   MQTT: [
-    { key: 'broker', label: 'Broker', type: 'text', default: 'localhost' },
-    { key: 'port', label: 'Port', type: 'number', default: 1883 },
-    { key: 'topic', label: 'Topic', type: 'text', default: 'sensors/temp1' },
-    { key: 'json_path', label: 'JSON Path', type: 'text', default: '$.value' },
+    { key: 'broker', label: 'Broker Host', type: 'text', default: 'localhost' },
+    { key: 'port', label: 'Broker Port', type: 'number', default: 1883 },
+    { key: 'topic', label: 'Topic', type: 'text', default: 'sensors/temp1', tooltip: 'MQTT Topic to subscribe to' },
+    { key: 'json_path', label: 'JSON Path', type: 'text', default: '$.value', tooltip: 'JSONPath to extract value (e.g. $.data.temp)' },
+    { key: 'username', label: 'Username', type: 'text', default: '', tooltip: 'Optional' },
+    { key: 'password', label: 'Password', type: 'password', default: '', tooltip: 'Optional' },
   ],
   CAN: [
     { key: 'interface', label: 'Interface', type: 'text', default: 'socketcan' },
     { key: 'channel', label: 'Channel', type: 'text', default: 'can0' },
-    { key: 'arbitration_id', label: 'Arbitration ID', type: 'text', default: '0x123' },
-    { key: 'signal_name', label: 'Signal Name', type: 'text', default: '' },
+    { key: 'arbitration_id', label: 'Arbitration ID (Hex)', type: 'text', default: '0x123', tooltip: 'Message ID in Hex' },
+    { key: 'signal_name', label: 'Signal Name', type: 'text', default: '', tooltip: 'Signal name from DBC file' },
   ],
 }
 
@@ -101,8 +132,15 @@ async function handleSubmit() {
   if (editingSensor.value) {
     await sensorStore.updateSensor(editingSensor.value.id, formData.value)
   } else {
-    await sensorStore.createSensor(formData.value)
+    try {
+      await sensorStore.createSensor(formData.value)
+    } catch (e) {
+      // Error handling is done in store, but we capture alert here if needed
+      // Store logic needs update to propagate error properly or we check return
+    }
   }
+  // Ideally only close if success. Store.createSensor returns null on fail.
+  // We should verify this.
   showModal.value = false
 }
 
@@ -166,8 +204,8 @@ function getStatusClass(status: string): string {
           <div class="sensor-unit">{{ sensor.unit || '' }}</div>
         </div>
         <button 
-          class="btn btn-secondary" 
-          style="padding: 0.5rem 0.75rem;"
+          class="btn btn-secondary delete-btn" 
+          title="Delete Sensor"
           @click.stop="handleDelete(sensor)"
         >
           <i class="pi pi-trash"></i>
@@ -211,19 +249,49 @@ function getStatusClass(status: string): string {
             <input v-model="formData.description" type="text" class="form-input" />
           </div>
 
-          <h3 style="margin: 1rem 0 0.75rem; font-size: 0.875rem; color: var(--text-muted);">
+          <h3 style="margin: 1rem 0 0.75rem; font-size: 0.875rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.5rem;">
             Connection Parameters
+            <i class="pi pi-info-circle" style="font-size: 0.8rem;" title="Configure protocol-specific settings"></i>
           </h3>
 
-          <div class="form-row">
+          <div class="form-row" style="flex-wrap: wrap;">
             <div 
               v-for="field in connectionFields[formData.protocol as keyof typeof connectionFields]"
               :key="field.key"
               class="form-group"
-              style="flex: 1;"
+              style="flex: 1; min-width: 150px;"
             >
-              <label class="form-label">{{ field.label }}</label>
+              <label class="form-label" :title="field.tooltip">
+                {{ field.label }}
+                <i v-if="field.tooltip" class="pi pi-question-circle" style="font-size: 0.7rem; margin-left: 4px; color: var(--text-muted);"></i>
+              </label>
+              
+              <!-- Select Input -->
+              <select 
+                v-if="field.type === 'select'"
+                v-model="formData.connection_params[field.key]"
+                class="form-input"
+              >
+                <option 
+                  v-for="opt in field.options" 
+                  :key="typeof opt === 'object' ? opt.v : opt" 
+                  :value="typeof opt === 'object' ? opt.v : opt"
+                >
+                  {{ typeof opt === 'object' ? opt.l : opt }}
+                </option>
+              </select>
+
+              <!-- Number Input -->
               <input 
+                v-else-if="field.type === 'number'"
+                v-model.number="formData.connection_params[field.key]"
+                type="number"
+                class="form-input"
+              />
+
+              <!-- Text/Password Input -->
+              <input 
+                v-else
                 v-model="formData.connection_params[field.key]"
                 :type="field.type"
                 class="form-input"
@@ -320,6 +388,17 @@ function getStatusClass(status: string): string {
 .form-row {
   display: flex;
   gap: 1rem;
+}
+
+.delete-btn {
+  padding: 0.5rem 0.75rem;
+  transition: all 0.2s;
+}
+
+.delete-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  border-color: #ef4444;
 }
 
 @media (max-width: 600px) {

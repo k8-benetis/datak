@@ -78,7 +78,7 @@ services:
     environment:
       - DATAK_INFLUXDB_URL=http://influxdb:8086
       - DATAK_MQTT_BROKER=mosquitto
-      - DATAK_DATABASE_URL=sqlite+aiosqlite:///app/data/gateway.db
+      - DATAK_DATABASE_URL=sqlite+aiosqlite:////app/data/gateway.db
     volumes:
       - backend_data:/app/data
     depends_on:

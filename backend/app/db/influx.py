@@ -277,6 +277,50 @@ class InfluxDBClient:
             self._log.error("Statistics query failed", error=str(e))
             return {}
 
+    async def export_data(
+        self,
+        sensor_names: list[str],
+        start: str,
+        stop: str,
+    ) -> str:
+        """
+        Query and pivot data for export to CSV.
+        
+        Returns:
+            CSV string
+        """
+        if not self._client:
+            return ""
+
+        try:
+            query_api = self._client.query_api()
+            
+            # Format sensor names for Flux set
+            sensors_set = "[" + ", ".join(f'"{s}"' for s in sensor_names) + "]"
+
+            flux = f'''
+            from(bucket: "{settings.influxdb_bucket}")
+                |> range(start: {start}, stop: {stop})
+                |> filter(fn: (r) => r["_measurement"] == "sensor_reading")
+                |> filter(fn: (r) => contains(value: r["sensor_name"], set: {sensors_set}))
+                |> filter(fn: (r) => r["_field"] == "value")
+                |> pivot(rowKey:["_time"], columnKey: ["sensor_name"], valueColumn: "_value")
+                |> drop(columns: ["_start", "_stop", "_measurement", "_field"])
+                |> sort(columns: ["_time"])
+            '''
+
+            # We use the raw CSV output from InfluxDB Client or convert manually
+            # The python client can return a dataframe or raw csv
+            # Let's use pandas for better control over formatting if needed,
+            # or simply use the raw query_csv which returns an iterator/generator
+            
+            # For simplicity and performance with the client:
+            return await query_api.query_csv(flux, org=settings.influxdb_org, dialect=None)
+
+        except Exception as e:
+            self._log.error("Export query failed", error=str(e))
+            return ""
+
     @property
     def is_connected(self) -> bool:
         return self._connected

@@ -107,6 +107,7 @@ volumes:
   mosquitto_log:
   prometheus_data:
   grafana_data:
+  backend_data:
 
 networks:
   default:

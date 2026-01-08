@@ -99,4 +99,4 @@ digital_twin:
 
 ## License
 
-MIT License - See [LICENSE](LICENSE) for details.
+AGPL-3.0 - See [LICENSE](LICENSE) for details.

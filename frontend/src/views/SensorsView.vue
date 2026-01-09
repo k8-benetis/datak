@@ -153,7 +153,15 @@ async function handleSubmit() {
     try {
       await sensorStore.createSensor(formData.value)
     } catch (e: any) {
-      alert('Failed to create sensor: ' + (e.response?.data?.detail || e.message))
+      console.error("Sensor creation failed:", e)
+      const detail = e.response?.data?.detail
+      let msg = ''
+      if (typeof detail === 'object') {
+        msg = JSON.stringify(detail, null, 2)
+      } else {
+        msg = detail || e.message
+      }
+      alert('Failed to create sensor:\n' + msg)
     }
   }
   showModal.value = false

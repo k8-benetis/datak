@@ -152,8 +152,8 @@ async function handleSubmit() {
   } else {
     try {
       await sensorStore.createSensor(formData.value)
-    } catch (e) {
-      // Error handling is done in store
+    } catch (e: any) {
+      alert('Failed to create sensor: ' + (e.response?.data?.detail || e.message))
     }
   }
   showModal.value = false

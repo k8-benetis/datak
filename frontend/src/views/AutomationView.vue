@@ -105,8 +105,6 @@ function insertVariable(varName: string) {
 }
 </script>
 
-</script>
-
 <template>
     <div>
         <div class="header-actions">

@@ -23,10 +23,27 @@ const protocols = [
   { value: 'MODBUS_RTU', label: 'Modbus RTU' },
   { value: 'MQTT', label: 'MQTT' },
   { value: 'CAN', label: 'CANbus' },
+  { value: 'SYSTEM', label: 'System Mon (PC)' },
 ]
 
 // Connection params based on protocol
 const connectionFields = {
+  SYSTEM: [
+    { 
+      key: 'metric', 
+      label: 'Metric Type', 
+      type: 'select', 
+      options: [
+          { v: 'cpu_percent', l: 'CPU Usage (%)' },
+          { v: 'memory_percent', l: 'Memory Usage (%)' },
+          { v: 'disk_usage', l: 'Disk Usage (%)' },
+          { v: 'temperature', l: 'Temperature (°C)' }
+      ],
+      default: 'cpu_percent'
+    },
+    { key: 'path', label: 'Path (Disk only)', type: 'text', default: '/', tooltip: 'Mount point for disk usage' },
+    { key: 'sensor_label', label: 'Sensor Label (Temp only)', type: 'text', default: '', tooltip: 'Specific hardware sensor name (optional)' },
+  ],
   MODBUS_TCP: [
     { key: 'host', label: 'Host IP', type: 'text', default: '192.168.1.10', tooltip: 'IP address of the Modbus server' },
     { key: 'port', label: 'Port', type: 'number', default: 502, tooltip: 'TCP port (usually 502)' },

@@ -105,8 +105,10 @@ function insertVariable(varName: string) {
 }
 </script>
 
+</script>
+
 <template>
-    <AppLayout>
+    <div>
         <div class="header-actions">
             <h1>Automation Studio</h1>
             <button class="btn btn-primary" @click="openCreateModal">
@@ -214,7 +216,7 @@ function insertVariable(varName: string) {
                 </div>
             </div>
         </div>
-    </AppLayout>
+    </div>
 </template>
 
 <style scoped>

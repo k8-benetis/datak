@@ -90,7 +90,8 @@ def validate_formula(formula: str) -> tuple[bool, str | None]:
     # Try to compile with RestrictedPython
     try:
         # Wrap formula in assignment to make it a valid statement
-        code_str = f"_result_ = {formula}"
+        # Use 'res' instead of '_result_' because RestrictedPython forbids starting with _
+        code_str = f"res = {formula}"
         result = compile_restricted_exec(code_str)
 
         if result.errors:
@@ -158,7 +159,8 @@ def evaluate_formula(
 
     # Compile and execute
     try:
-        code_str = f"_result_ = {formula}"
+        # Use 'res' instead of '_result_'
+        code_str = f"res = {formula}"
         result = compile_restricted_exec(code_str)
 
         if result.errors:
@@ -166,7 +168,7 @@ def evaluate_formula(
 
         exec(result.code, restricted_globals, local_vars)
 
-        output = local_vars.get("_result_")
+        output = local_vars.get("res")
 
         if output is None:
             raise FormulaError("Formula produced no result")

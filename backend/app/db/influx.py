@@ -292,6 +292,7 @@ class InfluxDBClient:
             return ""
 
         try:
+        try:
             query_api = self._client.query_api()
 
             # Format sensor names for Flux set
@@ -308,13 +309,46 @@ class InfluxDBClient:
                 |> sort(columns: ["_time"])
             '''
 
-            # We use the raw CSV output from InfluxDB Client or convert manually
-            # The python client can return a dataframe or raw csv
-            # Let's use pandas for better control over formatting if needed,
-            # or simply use the raw query_csv which returns an iterator/generator
+            # Execute query
+            tables = await query_api.query(flux, org=settings.influxdb_org)
 
-            # For simplicity and performance with the client:
-            return await query_api.query_csv(flux, org=settings.influxdb_org, dialect=None)
+            if not tables:
+                return ""
+
+            # Use csv module to generate CSV string
+            import csv
+            import io
+
+            output = io.StringIO()
+            
+            # We need to collect all records and determine fieldnames dynamically
+            # because different time points might have different sensors if data is sparse?
+            # But pivot usually fills with nulls? No, Flux pivot doesn't fill missing unless configured.
+            # However, for CSV export, we want a fixed set of columns.
+            
+            # Fields: time, sensor1, sensor2...
+            fieldnames = ["time"] + sorted(sensor_names)
+            
+            writer = csv.DictWriter(output, fieldnames=fieldnames)
+            writer.writeheader()
+
+            # Iterate through all tables and records
+            # Note: Flux pivot results should be one table usually, or split by tags if other tags exist.
+            # We dropped other tags? No, we didn't drop all tags.
+            # But we pivoted on sensor_name.
+            
+            for table in tables:
+                for record in table.records:
+                    row = {"time": record.get_time().isoformat()}
+                    # The record values contain keys for each sensor_name due to pivot
+                    for sensor in sensor_names:
+                        val = record.values.get(sensor)
+                        if val is not None:
+                            row[sensor] = val
+                    
+                    writer.writerow(row)
+
+            return output.getvalue()
 
         except Exception as e:
             self._log.error("Export query failed", error=str(e))

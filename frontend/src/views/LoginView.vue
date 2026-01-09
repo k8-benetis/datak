@@ -41,6 +41,12 @@ async function handleLogin() {
         </div>
         <h1>DaTaK Gateway</h1>
         <p>Industrial IoT Edge Gateway</p>
+        <div class="powered-by">
+          <span>by</span>
+          <a href="https://robotika.cloud" target="_blank" rel="noopener noreferrer">
+            <img src="/logo_robotika.svg" alt="Robotika" class="robotika-logo" />
+          </a>
+        </div>
       </div>
 
       <form @submit.prevent="handleLogin" class="login-form">
@@ -138,6 +144,26 @@ async function handleLogin() {
 .login-header p {
   color: var(--text-muted);
   font-size: 0.875rem;
+}
+
+.powered-by {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.robotika-logo {
+  height: 24px;
+  opacity: 0.8;
+  transition: opacity 0.2s;
+}
+
+.robotika-logo:hover {
+  opacity: 1;
 }
 
 .login-form {

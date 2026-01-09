@@ -46,8 +46,8 @@ async function handlePasswordChange() {
   <div class="app-container">
     <aside class="sidebar">
       <div class="sidebar-header">
-        <div class="sidebar-logo">
-          <i class="pi pi-bolt"></i>
+        <div class="sidebar-logo-container">
+          <img src="/logo.png" alt="Logo" class="sidebar-logo-img" />
         </div>
         <span class="sidebar-title">DaTaK</span>
       </div>
@@ -150,15 +150,19 @@ async function handlePasswordChange() {
   border-bottom: 1px solid var(--border);
 }
 
-.sidebar-logo {
+.sidebar-logo-container {
   width: 32px;
   height: 32px;
-  background: var(--primary);
-  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
+}
+
+.sidebar-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 4px;
 }
 
 .sidebar-title {

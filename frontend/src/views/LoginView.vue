@@ -36,8 +36,8 @@ async function handleLogin() {
   <div class="login-container">
     <div class="login-card">
       <div class="login-header">
-        <div class="login-logo">
-          <i class="pi pi-bolt"></i>
+        <div class="login-logo-container">
+          <img src="/logo.png" alt="Logo" class="login-logo-img" />
         </div>
         <h1>DaTaK Gateway</h1>
         <p>Industrial IoT Edge Gateway</p>
@@ -78,7 +78,12 @@ async function handleLogin() {
       </form>
 
       <div class="login-footer">
-        <p>Default: admin / admin</p>
+        <p style="margin-bottom: 0.5rem;">Default: admin / admin</p>
+        <div class="contact-info">
+          <a href="mailto:kate@robotika.cloud" class="contact-link">kate@robotika.cloud</a>
+          <span class="separator">•</span>
+          <a href="https://robotika.cloud" target="_blank" rel="noopener noreferrer" class="contact-link">IoT Solutions</a>
+        </div>
       </div>
     </div>
   </div>
@@ -109,16 +114,19 @@ async function handleLogin() {
   margin-bottom: 2rem;
 }
 
-.login-logo {
-  width: 64px;
-  height: 64px;
-  background: linear-gradient(135deg, var(--primary), #06b6d4);
-  border-radius: 16px;
+.login-logo-container {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 1rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 2rem;
-  margin: 0 auto 1rem;
+}
+
+.login-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .login-header h1 {
@@ -161,5 +169,29 @@ async function handleLogin() {
   margin-top: 1.5rem;
   color: var(--text-muted);
   font-size: 0.75rem;
+}
+
+.contact-info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.contact-link {
+  color: var(--primary);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.contact-link:hover {
+  color: var(--primary-hover, #3b82f6);
+  text-decoration: underline;
+}
+
+.separator {
+  color: var(--border);
 }
 </style>

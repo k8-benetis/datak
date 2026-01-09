@@ -125,27 +125,31 @@ async def logout(
     return {"message": "Logged out successfully"}
 
 
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+
 @router.post("/change-password")
 async def change_password(
+    body: ChangePasswordRequest,
     user: CurrentUser,
     db: DbSession,
-    current_password: str,
-    new_password: str,
 ) -> dict[str, str]:
     """Change password for current user."""
-    if not verify_password(current_password, user.password_hash):
+    if not verify_password(body.current_password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Current password is incorrect",
         )
 
-    if len(new_password) < 8:
+    if len(body.new_password) < 8:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Password must be at least 8 characters",
         )
 
-    user.password_hash = hash_password(new_password)
+    user.password_hash = hash_password(body.new_password)
     await db.commit()
 
     return {"message": "Password changed successfully"}

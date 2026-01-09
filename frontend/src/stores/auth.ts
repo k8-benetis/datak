@@ -50,6 +50,19 @@ export const useAuthStore = defineStore('auth', () => {
         localStorage.removeItem('token')
     }
 
+    async function changePassword(current: string, newPass: string): Promise<boolean> {
+        try {
+            await api.post('/api/auth/change-password', {
+                current_password: current,
+                new_password: newPass
+            })
+            return true
+        } catch (error) {
+            console.error('Change password failed:', error)
+            throw error
+        }
+    }
+
     return {
         token,
         user,
@@ -58,5 +71,6 @@ export const useAuthStore = defineStore('auth', () => {
         login,
         logout,
         fetchUser,
+        changePassword,
     }
 })

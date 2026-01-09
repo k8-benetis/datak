@@ -12,7 +12,7 @@
 
 ---
 
-## ✨ Features
+## Features
 
 - **Multi-Protocol Support**: Modbus TCP/RTU, CANbus (with DBC parsing), MQTT
 - **Hot-Reload**: Add/remove sensors without service restart
@@ -25,7 +25,7 @@
 
 ---
 
-## 📋 Requirements
+## Requirements
 
 ### System Requirements
 - **OS**: Linux (Ubuntu 20.04+, Debian 11+) or Windows with WSL2
@@ -40,7 +40,7 @@
 
 ---
 
-## 🚀 Quick Start (Docker - Recommended)
+## Quick Start (Docker - Recommended)
 
 The fastest way to get DaTaK running is with Docker:
 
@@ -64,7 +64,7 @@ docker compose up -d --build
 
 ---
 
-## 🛠️ Development Setup
+## Development Setup
 
 For local development without Docker:
 
@@ -87,7 +87,7 @@ npm run dev
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
@@ -119,7 +119,7 @@ npm run dev
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 datak/
@@ -133,7 +133,7 @@ datak/
 
 ---
 
-## ⚙️ Configuration
+## Configuration
 
 Copy `configs/gateway.example.yaml` to `configs/gateway.yaml` and adjust:
 
@@ -157,14 +157,14 @@ digital_twin:
 
 ---
 
-## 📞 Contact & Support
+## Contact & Support
 
 **Robotika** - IoT Solutions  
-- 🌐 Website: [https://robotika.cloud](https://robotika.cloud)  
-- ✉️ Email: [kate@robotika.cloud](mailto:kate@robotika.cloud)
+- Website: [https://robotika.cloud](https://robotika.cloud)  
+- Email: [kate@robotika.cloud](mailto:kate@robotika.cloud)
 
 ---
 
-## 📄 License
+## License
 
 AGPL-3.0 - See [LICENSE](LICENSE) for details.

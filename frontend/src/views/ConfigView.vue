@@ -155,19 +155,34 @@ async function exportConfig() {
           <div class="form-group" style="grid-column: 1 / -1; margin-top: 1rem; border-top: 1px solid var(--border); padding-top: 1rem;">
              <div class="checkbox-wrapper">
                 <input type="checkbox" id="dt-enabled" v-model="systemConfig.digital_twin_enabled">
-                <label for="dt-enabled" style="font-weight: 600;">Enable Digital Twin Integration</label>
+                <label for="dt-enabled" style="font-weight: 600;">Enable Digital Twin Integration (MQTT)</label>
              </div>
           </div>
           
           <template v-if="systemConfig.digital_twin_enabled">
-            <div class="form-group full-width">
-              <label>Endpoint URL</label>
-              <input v-model="systemConfig.digital_twin_endpoint" class="form-input" type="text" placeholder="https://twin.datak.io" />
+            <div class="form-group">
+              <label>MQTT Broker Host</label>
+              <input v-model="systemConfig.digital_twin_host" class="form-input" type="text" placeholder="mqtt.example.com" />
             </div>
             
+            <div class="form-group">
+              <label>MQTT Port</label>
+              <input v-model.number="systemConfig.digital_twin_port" class="form-input" type="number" placeholder="8883" />
+            </div>
+
             <div class="form-group full-width">
-              <label>API Key / Token</label>
-              <input v-model="systemConfig.digital_twin_api_key" class="form-input" type="password" placeholder="Key provided by Digital Twin platform" />
+              <label>Topic for Attributes</label>
+              <input v-model="systemConfig.digital_twin_topic" class="form-input" type="text" placeholder="/org/device/attrs" />
+            </div>
+            
+            <div class="form-group">
+              <label>Username (Optional)</label>
+              <input v-model="systemConfig.digital_twin_username" class="form-input" type="text" />
+            </div>
+
+            <div class="form-group">
+              <label>Password / Token</label>
+              <input v-model="systemConfig.digital_twin_password" class="form-input" type="password" />
             </div>
           </template>
         </div>

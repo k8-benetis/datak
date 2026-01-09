@@ -41,11 +41,15 @@ class Settings(BaseSettings):
     mqtt_username: str | None = None
     mqtt_password: str | None = None
 
-    # Digital Twin
+    display_timezone: str = "UTC"
+    
+    # Digital Twin (MQTT)
     digital_twin_enabled: bool = False
-    digital_twin_endpoint: str = ""
-    digital_twin_api_key: str = ""
-    digital_twin_timeout: int = 10
+    digital_twin_host: str = ""
+    digital_twin_port: int = 8883
+    digital_twin_topic: str = ""
+    digital_twin_username: str | None = None
+    digital_twin_password: str | None = None
 
     # Security
     jwt_secret: str = "CHANGE-ME-IN-PRODUCTION"
@@ -53,8 +57,6 @@ class Settings(BaseSettings):
     token_expire_minutes: int = 1440
 
     # API
-    api_host: str = "0.0.0.0"
-    api_port: int = 8000
     api_host: str = "0.0.0.0"
     api_port: int = 8000
     api_cors_origins: list[str] = ["http://localhost:5173", "http://localhost:3000"]
@@ -133,9 +135,11 @@ class Settings(BaseSettings):
             },
             "digital_twin": {
                 "enabled": self.digital_twin_enabled,
-                "endpoint": self.digital_twin_endpoint,
-                "api_key": self.digital_twin_api_key,
-                "timeout": self.digital_twin_timeout,
+                "host": self.digital_twin_host,
+                "port": self.digital_twin_port,
+                "topic": self.digital_twin_topic,
+                "username": self.digital_twin_username,
+                "password": self.digital_twin_password,
             },
             "security": {
                 "jwt_secret": self.jwt_secret,

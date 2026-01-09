@@ -31,9 +31,11 @@ class SystemConfig(BaseModel):
     
     influxdb_retention_days: int
     digital_twin_enabled: bool
-    digital_twin_endpoint: str
-    digital_twin_api_key: str
-    digital_twin_timeout: int = 10
+    digital_twin_host: str
+    digital_twin_port: int
+    digital_twin_topic: str
+    digital_twin_username: str | None = None
+    digital_twin_password: str | None = None
     gateway_name: str | None = None  # Allow renaming gateway
 
 
@@ -43,9 +45,11 @@ async def get_system_config(user: AdminUser) -> SystemConfig:
     return SystemConfig(
         influxdb_retention_days=settings.influxdb_retention_days,
         digital_twin_enabled=settings.digital_twin_enabled,
-        digital_twin_endpoint=settings.digital_twin_endpoint,
-        digital_twin_api_key=settings.digital_twin_api_key,
-        digital_twin_timeout=settings.digital_twin_timeout,
+        digital_twin_host=settings.digital_twin_host,
+        digital_twin_port=settings.digital_twin_port,
+        digital_twin_topic=settings.digital_twin_topic,
+        digital_twin_username=settings.digital_twin_username,
+        digital_twin_password=settings.digital_twin_password,
         gateway_name=settings.gateway_name,
     )
 
@@ -63,9 +67,11 @@ async def update_system_config(
     # Update settings
     settings.influxdb_retention_days = body.influxdb_retention_days
     settings.digital_twin_enabled = body.digital_twin_enabled
-    settings.digital_twin_endpoint = body.digital_twin_endpoint
-    settings.digital_twin_api_key = body.digital_twin_api_key
-    settings.digital_twin_timeout = body.digital_twin_timeout
+    settings.digital_twin_host = body.digital_twin_host
+    settings.digital_twin_port = body.digital_twin_port
+    settings.digital_twin_topic = body.digital_twin_topic
+    settings.digital_twin_username = body.digital_twin_username
+    settings.digital_twin_password = body.digital_twin_password
     if body.gateway_name:
         settings.gateway_name = body.gateway_name
 

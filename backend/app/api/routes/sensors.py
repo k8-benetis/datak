@@ -156,10 +156,12 @@ async def create_sensor(
     Requires OPERATOR or ADMIN role.
     """
     # Validate protocol
+    print(f"DEBUG: Received protocol: '{body.protocol}' type: {type(body.protocol)}", flush=True)
     try:
         SensorProtocol(body.protocol)
     except ValueError:
         valid_protocols = [p.value for p in SensorProtocol]
+        print(f"DEBUG: Invalid protocol. Valid: {valid_protocols}", flush=True)
         raise HTTPException(
             status_code=400,
             detail=f"Invalid protocol '{body.protocol}'. Must be one of: {valid_protocols}",

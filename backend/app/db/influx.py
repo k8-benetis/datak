@@ -299,7 +299,7 @@ class InfluxDBClient:
 
             flux = f'''
             from(bucket: "{settings.influxdb_bucket}")
-                |> range(start: {start}, stop: {stop})
+                |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
                 |> filter(fn: (r) => r["_measurement"] == "sensor_reading")
                 |> filter(fn: (r) => contains(value: r["sensor_name"], set: {sensors_set}))
                 |> filter(fn: (r) => r["_field"] == "value")

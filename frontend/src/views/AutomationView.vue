@@ -115,8 +115,6 @@ function insertVariable(varName: string) {
             </button>
         </div>
 
-        <div v-if="loading" class="loading">Loading rules...</div>
-
         <!-- Automation Guide -->
         <div class="card" style="margin-bottom: 2rem; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1rem;">
             <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" @click="showGuide = !showGuide">
@@ -167,6 +165,8 @@ function insertVariable(varName: string) {
                 </div>
             </div>
         </div>
+
+        <div v-if="loading" class="loading">Loading rules...</div>
 
         <div v-else class="rules-grid">
             <div v-for="rule in rules" :key="rule.id" class="rule-card">

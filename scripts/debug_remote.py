@@ -30,26 +30,6 @@ def main():
     print(stdout.read().decode())
     print(stderr.read().decode())
     
-    # Check the file content
-    print("Checking remote app/models/sensor.py...")
-    stdin, stdout, stderr = client.exec_command("ls -td -- /home/g/datak_* | head -n 1")
-    stdin.write(f"{PASS}\n")
-    stdin.flush()
-    latest_dir = stdout.read().decode().strip()
-    
-    if latest_dir:
-        print(f"Latest dir: {latest_dir}")
-        cmd = f"cat {latest_dir}/backend/app/models/sensor.py"
-        stdin, stdout, stderr = client.exec_command(f"sudo -S -p '' {cmd}")
-        stdin.write(f"{PASS}\n")
-        stdin.flush()
-        content = stdout.read().decode()
-        print(content)
-        if "SYSTEM" in content:
-            print("SUCCESS: SYSTEM protocol found in file.")
-        else:
-            print("FAILURE: SYSTEM protocol NOT found in file.")
-    
     client.close()
 
 if __name__ == "__main__":

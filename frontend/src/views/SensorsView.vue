@@ -151,6 +151,7 @@ async function handleSubmit() {
     await sensorStore.updateSensor(editingSensor.value.id, formData.value)
   } else {
     try {
+      console.log('Creating sensor with payload:', JSON.parse(JSON.stringify(formData.value)))
       await sensorStore.createSensor(formData.value)
     } catch (e: any) {
       console.error("Sensor creation failed:", e)

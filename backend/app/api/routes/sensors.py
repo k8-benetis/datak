@@ -156,6 +156,12 @@ async def create_sensor(
     Requires OPERATOR or ADMIN role.
     """
     # Validate protocol
+    try:
+        req_json = await request.json()
+        print(f"DEBUG: Full Request Body: {req_json}", flush=True)
+    except Exception as e:
+        print(f"DEBUG: Failed to read request body: {e}", flush=True)
+
     print(f"DEBUG: Received protocol: '{body.protocol}' type: {type(body.protocol)}", flush=True)
     try:
         SensorProtocol(body.protocol)

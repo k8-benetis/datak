@@ -17,6 +17,7 @@ interface AutomationRule {
 const sensorStore = useSensorStore()
 const rules = ref<AutomationRule[]>([])
 const loading = ref(false)
+const showGuide = ref(false)
 
 // Form State
 const showModal = ref(false)
@@ -115,6 +116,57 @@ function insertVariable(varName: string) {
         </div>
 
         <div v-if="loading" class="loading">Loading rules...</div>
+
+        <!-- Automation Guide -->
+        <div class="card" style="margin-bottom: 2rem; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" @click="showGuide = !showGuide">
+                <h2 style="font-size: 1.1rem; margin: 0; display: flex; align-items: center; gap: 0.5rem; color: var(--text);">
+                    <i class="pi pi-book" style="color: var(--primary);"></i> Automation Guide
+                </h2>
+                <i :class="['pi', showGuide ? 'pi-chevron-up' : 'pi-chevron-down']" style="color: var(--text-muted);"></i>
+            </div>
+            
+            <div v-if="showGuide" style="margin-top: 1rem; border-top: 1px solid var(--border); padding-top: 1rem;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                    <div>
+                        <h3 style="font-size: 1rem; margin-bottom: 0.5rem;"><i class="pi pi-chart-line"></i> Smart Variables</h3>
+                        <p style="font-size: 0.9rem; color: var(--text-muted);">Use statistical functions on sensor data (cached from history).</p>
+                        <ul style="list-style: none; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.9rem;">
+                            <li><code>stat_{sensor}_{func}_{window}</code></li>
+                            <li>
+                                <strong>Functions:</strong> <code>mean</code>, <code>min</code>, <code>max</code>, <code>std</code>, <code>median</code>
+                            </li>
+                            <li>
+                                <strong>Windows:</strong> <code>5m</code>, <code>10m</code>, <code>1h</code>, <code>24h</code>
+                            </li>
+                            <li>
+                                <strong>Examples:</strong>
+                                <div style="margin-top: 0.25rem;">
+                                    <code style="background: var(--surface-hover); padding: 0.2rem 0.4rem; border-radius: 4px;">stat_temp1_mean_10m</code>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <div>
+                        <h3 style="font-size: 1rem; margin-bottom: 0.5rem;"><i class="pi pi-sliders-h"></i> Logic & Actions</h3>
+                        <p style="font-size: 0.9rem; color: var(--text-muted);">Define conditions using Python syntax.</p>
+                        <ul style="list-style: none; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.9rem;">
+                            <li>
+                                <strong>Condition:</strong>
+                                <code style="display: block; margin-top: 0.25rem; background: var(--surface-hover); padding: 0.2rem 0.4rem; border-radius: 4px;">stat_temp1_mean_5m > 30 and humidity < 50</code>
+                            </li>
+                            <li>
+                                <strong>System Sensors:</strong> Use system metrics like CPU load.
+                                <div style="margin-top: 0.25rem;">
+                                    <code style="background: var(--surface-hover); padding: 0.2rem 0.4rem; border-radius: 4px;">cpu_percent > 80</code>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <div v-else class="rules-grid">
             <div v-for="rule in rules" :key="rule.id" class="rule-card">

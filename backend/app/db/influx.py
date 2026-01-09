@@ -292,7 +292,6 @@ class InfluxDBClient:
             return ""
 
         try:
-        try:
             query_api = self._client.query_api()
 
             # Format sensor names for Flux set
@@ -321,22 +320,12 @@ class InfluxDBClient:
 
             output = io.StringIO()
             
-            # We need to collect all records and determine fieldnames dynamically
-            # because different time points might have different sensors if data is sparse?
-            # But pivot usually fills with nulls? No, Flux pivot doesn't fill missing unless configured.
-            # However, for CSV export, we want a fixed set of columns.
-            
             # Fields: time, sensor1, sensor2...
             fieldnames = ["time"] + sorted(sensor_names)
             
             writer = csv.DictWriter(output, fieldnames=fieldnames)
             writer.writeheader()
 
-            # Iterate through all tables and records
-            # Note: Flux pivot results should be one table usually, or split by tags if other tags exist.
-            # We dropped other tags? No, we didn't drop all tags.
-            # But we pivoted on sensor_name.
-            
             for table in tables:
                 for record in table.records:
                     row = {"time": record.get_time().isoformat()}

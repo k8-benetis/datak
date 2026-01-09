@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useSensorStore, type Sensor } from '../stores/sensors'
-import { api } from '../api'
+import { api } from '../api' // Kept for other potential uses
+import FormulaEditor from '../components/FormulaEditor.vue'
 
 const sensorStore = useSensorStore()
 
@@ -135,30 +136,15 @@ async function handleSubmit() {
     try {
       await sensorStore.createSensor(formData.value)
     } catch (e) {
-      // Error handling is done in store, but we capture alert here if needed
-      // Store logic needs update to propagate error properly or we check return
+      // Error handling is done in store
     }
   }
-  // Ideally only close if success. Store.createSensor returns null on fail.
-  // We should verify this.
   showModal.value = false
 }
 
 async function handleDelete(sensor: Sensor) {
   if (confirm(`Delete sensor "${sensor.name}"?`)) {
     await sensorStore.deleteSensor(sensor.id)
-  }
-}
-
-async function testFormula() {
-  try {
-    const response = await api.post('/api/sensors/test-formula', {
-      formula: formData.value.data_formula,
-      test_value: 100,
-    })
-    alert(`Formula result: ${response.data.result}`)
-  } catch (e) {
-    alert('Invalid formula')
   }
 }
 
@@ -250,8 +236,8 @@ function getStatusClass(status: string): string {
           </div>
 
           <h3 style="margin: 1rem 0 0.75rem; font-size: 0.875rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.5rem;">
-            Connection Parameters
-            <i class="pi pi-info-circle" style="font-size: 0.8rem;" title="Configure protocol-specific settings"></i>
+            Connection Parameters (Source of 'val')
+            <i class="pi pi-info-circle" style="font-size: 0.8rem;" title="Configure protocol-specific settings. The value read here is passed as 'val' to the formula below."></i>
           </h3>
 
           <div class="form-row" style="flex-wrap: wrap;">
@@ -300,17 +286,18 @@ function getStatusClass(status: string): string {
           </div>
 
           <div class="form-row">
-            <div class="form-group" style="flex: 2;">
-              <label class="form-label">Data Formula</label>
-              <div style="display: flex; gap: 0.5rem;">
-                <input v-model="formData.data_formula" type="text" class="form-input" />
-                <button type="button" class="btn btn-secondary" @click="testFormula">Test</button>
-              </div>
-            </div>
             <div class="form-group" style="flex: 1;">
+              <label class="form-label">
+                  Data Formula 
+                  <span class="text-muted" style="font-size: 0.75rem; font-weight: normal;">(Use 'val' for input)</span>
+              </label>
+              <FormulaEditor v-model="formData.data_formula" />
+            </div>
+          </div>
+          
+          <div class="form-group">
               <label class="form-label">Unit</label>
               <input v-model="formData.unit" type="text" class="form-input" placeholder="°C, bar, %" />
-            </div>
           </div>
 
           <div class="form-group">

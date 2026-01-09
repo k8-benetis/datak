@@ -81,7 +81,7 @@ services:
       - DATAK_DATABASE_URL=sqlite+aiosqlite:////app/data/gateway.db
     volumes:
       - backend_data:/app/data
-      - ../configs/gateway.yaml:/app/configs/gateway.yaml:ro
+      - ../configs/gateway.yaml:/app/configs/gateway.yaml
     depends_on:
       - influxdb
       - mosquitto

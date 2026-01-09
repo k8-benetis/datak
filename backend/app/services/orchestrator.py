@@ -1,17 +1,17 @@
 """Driver orchestrator for lifecycle management and hot-reload."""
 
-from typing import Any
-from datetime import datetime
 import asyncio
+from datetime import datetime
+from typing import Any
 
 import structlog
 
+from app.core.formula import FormulaError, evaluate_formula
 from app.drivers.base import BaseDriver
+from app.drivers.canbus import CANDriver
 from app.drivers.modbus import ModbusDriver
 from app.drivers.mqtt import MQTTDriver
-from app.drivers.canbus import CANDriver
 from app.drivers.system import SystemDriver
-from app.core.formula import evaluate_formula, FormulaError
 from app.models.sensor import SensorProtocol
 
 logger = structlog.get_logger()
@@ -185,21 +185,6 @@ class DriverOrchestrator:
             self._log.error("Write failed", sensor_id=sensor_id, error=str(e))
             raise
 
-    async def write_sensor(self, sensor_id: int, value: float) -> bool:
-        """Write a value to a sensor."""
-        driver = self._drivers.get(sensor_id)
-        if not driver:
-            # If virtual sensor (future feature), handled here
-            return False
-
-        if not driver.is_running:
-            return False
-
-        try:
-            return await driver.write(value)
-        except Exception as e:
-            self._log.error("Write failed", sensor_id=sensor_id, error=str(e))
-            raise
 
     def get_status(self, sensor_id: int) -> dict[str, Any]:
         """Get current status of a sensor."""
@@ -223,9 +208,6 @@ class DriverOrchestrator:
     # Callback Registration
     # ─────────────────────────────────────────────────────────────
 
-    # ─────────────────────────────────────────────────────────────
-    # Callback Registration
-    # ─────────────────────────────────────────────────────────────
 
     def on_processed_value(self, callback: Any) -> None:
         """Register callback for processed values."""

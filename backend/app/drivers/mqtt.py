@@ -1,8 +1,8 @@
 """MQTT async driver using aiomqtt."""
 
+import asyncio
 import json
 from typing import Any
-import asyncio
 
 import aiomqtt
 
@@ -169,16 +169,16 @@ class MQTTDriver(BaseDriver):
             raise ConnectionError("Not connected")
 
         command_topic = self.config.get("command_topic", f"{self.topic}/set")
-        
+
         try:
             # Publish as simple value or JSON based on config (simple for now)
             # Todo: Support json_template if needed
             payload = str(value)
-            
+
             await self._client.publish(command_topic, payload, qos=self.qos)
             self._log.info("Published command", topic=command_topic, value=value)
             return True
-            
+
         except Exception as e:
             self._log.error("MQTT publish failed", error=str(e))
             return False

@@ -1,9 +1,10 @@
 """Abstract base class for async protocol drivers."""
 
-from abc import ABC, abstractmethod
-from datetime import datetime
-from typing import Any, Callable, Awaitable
 import asyncio
+from abc import ABC, abstractmethod
+from collections.abc import Awaitable, Callable
+from datetime import datetime
+from typing import Any
 
 import structlog
 
@@ -173,7 +174,7 @@ class BaseDriver(ABC):
             self._task.cancel()
             try:
                 await asyncio.wait_for(self._task, timeout=5.0)
-            except (asyncio.CancelledError, asyncio.TimeoutError):
+            except (TimeoutError, asyncio.CancelledError):
                 pass
 
         try:
@@ -259,7 +260,7 @@ class BaseDriver(ABC):
 
                     await self._notify_status("ONLINE")
 
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     await self._handle_error("Read timeout")
                 except ReadError as e:
                     await self._handle_error(str(e))

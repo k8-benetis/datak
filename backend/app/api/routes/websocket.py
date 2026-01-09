@@ -1,15 +1,13 @@
 """WebSocket endpoint for real-time sensor updates."""
 
+import json
 from datetime import datetime
 from typing import Any
-import asyncio
-import json
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
-from fastapi.websockets import WebSocketState
 import structlog
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi.websockets import WebSocketState
 
-from app.api.deps import get_db
 from app.services.orchestrator import orchestrator
 
 logger = structlog.get_logger()
@@ -41,13 +39,13 @@ class ConnectionManager:
         """Remove a WebSocket connection."""
         if websocket in self._connections:
             self._connections.remove(websocket)
-        
+
         # Remove from all subscriptions
         for sensor_id in list(self._subscriptions.keys()):
             self._subscriptions[sensor_id].discard(websocket)
             if not self._subscriptions[sensor_id]:
                 del self._subscriptions[sensor_id]
-        
+
         self._log.info("WebSocket disconnected", total=len(self._connections))
 
     def subscribe(self, websocket: WebSocket, sensor_id: int) -> None:
@@ -251,7 +249,7 @@ async def on_sensor_value(
     """Callback for orchestrator to send updates via WebSocket."""
     # Get sensor info from orchestrator
     status = orchestrator.get_status(sensor_id)
-    
+
     await manager.send_sensor_update(
         sensor_id=sensor_id,
         sensor_name=f"sensor_{sensor_id}",  # TODO: Get actual name

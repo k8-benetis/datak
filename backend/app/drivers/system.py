@@ -1,9 +1,9 @@
 """System monitoring driver using psutil."""
 
-import asyncio
 from typing import ClassVar
 
 import psutil
+
 from app.drivers.base import BaseDriver, ReadError
 
 

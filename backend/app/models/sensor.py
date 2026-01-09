@@ -4,10 +4,10 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
-from sqlalchemy import String, Boolean, Integer, Float, JSON, Index, Text
+from sqlalchemy import JSON, Float, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.models.base import Base, TimestampMixin, SoftDeleteMixin
+from app.models.base import Base, SoftDeleteMixin, TimestampMixin
 
 
 class SensorProtocol(str, Enum):

@@ -8,9 +8,8 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
-
+from app.models import AuditLog, ConfigVersion, Sensor, SensorReading, User  # noqa: F401
 from app.models.base import Base
-from app.models import User, Sensor, SensorReading, AuditLog, ConfigVersion  # noqa: F401
 
 # Alembic Config object
 config = context.config

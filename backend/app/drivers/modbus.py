@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from pymodbus.client import AsyncModbusTcpClient, AsyncModbusSerialClient
+from pymodbus.client import AsyncModbusSerialClient, AsyncModbusTcpClient
 from pymodbus.exceptions import ModbusException
 
 from app.drivers.base import BaseDriver, ConnectionError, ReadError, WriteError

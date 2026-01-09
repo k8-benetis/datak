@@ -3,14 +3,14 @@
 from datetime import datetime
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, status, Request
+from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
-from app.api.deps import DbSession, CurrentUser, OperatorUser
-from app.models.sensor import Sensor, SensorProtocol, SensorStatus
-from app.models.audit import AuditLog, AuditAction
+from app.api.deps import CurrentUser, DbSession, OperatorUser
 from app.core.formula import validate_formula
+from app.models.audit import AuditAction, AuditLog
+from app.models.sensor import Sensor, SensorProtocol, SensorStatus
 from app.services.orchestrator import orchestrator
 
 router = APIRouter(prefix="/sensors", tags=["Sensors"])

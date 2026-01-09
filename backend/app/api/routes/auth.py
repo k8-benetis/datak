@@ -2,19 +2,19 @@
 
 from datetime import datetime
 
-from fastapi import APIRouter, HTTPException, status, Request
+from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel
 from sqlalchemy import select
 
-from app.api.deps import DbSession, CurrentUser
+from app.api.deps import CurrentUser, DbSession
 from app.core.security import (
-    verify_password,
-    hash_password,
-    create_access_token,
     Token,
+    create_access_token,
+    hash_password,
+    verify_password,
 )
+from app.models.audit import AuditAction, AuditLog
 from app.models.user import User
-from app.models.audit import AuditLog, AuditAction
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 

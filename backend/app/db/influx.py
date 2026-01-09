@@ -2,12 +2,11 @@
 
 from datetime import datetime
 from typing import Any
-import asyncio
 
+import structlog
 from influxdb_client import Point, WritePrecision
 from influxdb_client.client.influxdb_client_async import InfluxDBClientAsync
 from influxdb_client.client.write_api_async import WriteApiAsync
-import structlog
 
 from app.config import get_settings
 
@@ -39,7 +38,7 @@ class InfluxDBClient:
                 token=settings.influxdb_token,
                 org=settings.influxdb_org,
             )
-            
+
             # Test connection
             ready = await self._client.ping()
             if ready:
@@ -50,7 +49,7 @@ class InfluxDBClient:
             else:
                 self._log.error("InfluxDB not ready")
                 return False
-                
+
         except Exception as e:
             self._log.error("Failed to connect to InfluxDB", error=str(e))
             return False
@@ -294,7 +293,7 @@ class InfluxDBClient:
 
         try:
             query_api = self._client.query_api()
-            
+
             # Format sensor names for Flux set
             sensors_set = "[" + ", ".join(f'"{s}"' for s in sensor_names) + "]"
 
@@ -313,7 +312,7 @@ class InfluxDBClient:
             # The python client can return a dataframe or raw csv
             # Let's use pandas for better control over formatting if needed,
             # or simply use the raw query_csv which returns an iterator/generator
-            
+
             # For simplicity and performance with the client:
             return await query_api.query_csv(flux, org=settings.influxdb_org, dialect=None)
 

@@ -1,8 +1,8 @@
 """CANbus driver with DBC file parsing using python-can and cantools."""
 
-from typing import Any
 import asyncio
 from pathlib import Path
+from typing import Any
 
 import can
 import cantools

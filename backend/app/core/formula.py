@@ -5,8 +5,8 @@ import re
 from typing import Any
 
 from RestrictedPython import compile_restricted_exec, safe_globals
-from RestrictedPython.Guards import guarded_iter_unpack_sequence, safer_getattr
 from RestrictedPython.Eval import default_guarded_getiter
+from RestrictedPython.Guards import guarded_iter_unpack_sequence, safer_getattr
 
 # Allowed mathematical functions for formulas
 ALLOWED_BUILTINS = {

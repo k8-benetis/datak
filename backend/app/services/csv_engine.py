@@ -1,22 +1,20 @@
 """CSV statistical report generator."""
 
+import asyncio
 import csv
 import gzip
 import shutil
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
-import asyncio
 
 import pandas as pd
 import structlog
-from sqlalchemy import select
 
 from app.config import get_settings
 from app.db.influx import influx_client
 from app.db.session import async_session_factory
 from app.models.sensor import Sensor
-from app.models.report import ReportJob
 
 logger = structlog.get_logger()
 settings = get_settings()
@@ -45,10 +43,10 @@ class CSVReportGenerator:
     async def start(self) -> None:
         """Start the CSV generation background task."""
         self._running = True
-        
+
         # Ensure output directory exists
         self._output_dir.mkdir(parents=True, exist_ok=True)
-        
+
         self._task = asyncio.create_task(self._generation_loop())
         self._log.info("CSV Report Generator started", output_dir=str(self._output_dir))
 
@@ -104,7 +102,7 @@ class CSVReportGenerator:
             # Query statistics for each sensor
             now = datetime.utcnow()
             start_time = now - timedelta(minutes=lookback_minutes)
-            
+
             rows: list[dict[str, Any]] = []
 
             for sensor in sensors:
@@ -141,7 +139,7 @@ class CSVReportGenerator:
             # Write CSV
             df = pd.DataFrame(rows)
             df.to_csv(filepath, index=False, quoting=csv.QUOTE_NONNUMERIC)
-            
+
             self._log.info(
                 "Report generated",
                 file=filename,
@@ -264,7 +262,7 @@ class CSVReportGenerator:
     def list_reports(self, limit: int = 50) -> list[dict[str, Any]]:
         """List available report files."""
         files = []
-        
+
         for pattern in ["*.csv", "*.csv.gz"]:
             for file in self._output_dir.glob(pattern):
                 stat = file.stat()

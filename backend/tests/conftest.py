@@ -1,21 +1,19 @@
 """Pytest configuration and fixtures."""
 
 import asyncio
-from collections.abc import AsyncGenerator
-from typing import Generator
+from collections.abc import AsyncGenerator, Generator
 
 import pytest
 import pytest_asyncio
 from fastapi.testclient import TestClient
-from httpx import AsyncClient, ASGITransport
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from app.core.security import hash_password
+from app.db.session import get_db
 from app.main import app
 from app.models.base import Base
-from app.db.session import get_db
-from app.core.security import hash_password
 from app.models.user import User
-
 
 # Test database URL (in-memory SQLite)
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"

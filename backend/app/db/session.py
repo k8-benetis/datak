@@ -38,9 +38,11 @@ async def init_db() -> None:
     # Seed default admin user if not exists
     async with async_session_factory() as session:
         from sqlalchemy import select
+
+        from app.core.security import hash_password
+
         # Import dynamically to avoid circular imports during startup
         from app.models.user import User, UserRole
-        from app.core.security import hash_password
 
         result = await session.execute(select(User).limit(1))
         if not result.scalar_one_or_none():

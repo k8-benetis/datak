@@ -1,8 +1,10 @@
 
-import json
 import asyncio
-import structlog
+import json
+
 import aiomqtt
+import structlog
+
 from app.config import get_settings
 from app.services.orchestrator import orchestrator
 
@@ -22,7 +24,7 @@ class CommandListener:
         self._client: aiomqtt.Client | None = None
         self._running = False
         self._task: asyncio.Task[None] | None = None
-        
+
         # Topic to subscribe to
         self.command_topic = f"datak/{settings.gateway_name}/cmd/#"
 
@@ -62,7 +64,7 @@ class CommandListener:
 
                     async for message in client.messages:
                         await self._handle_message(message)
-            
+
             except asyncio.CancelledError:
                 break
             except Exception as e:
@@ -87,14 +89,14 @@ class CommandListener:
             # Resolve sensor_id from name if needed
             if sensor_id is None and sensor_name:
                 # We need a way to look up sensor ID by name
-                # Orchestrator doesn't expose this directly efficiently, 
+                # Orchestrator doesn't expose this directly efficiently,
                 # but we can iterate drivers or access a mapping if strictly needed.
                 # For now, let's look at orchestrator._drivers
                 for sid, driver in orchestrator._drivers.items():
                     if driver.sensor_name == sensor_name:
                         sensor_id = sid
                         break
-            
+
             if sensor_id is None:
                 self._log.warning("Command missing valid sensor_id or name", data=data)
                 return

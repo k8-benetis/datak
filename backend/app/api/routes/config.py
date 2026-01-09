@@ -1,21 +1,20 @@
 """Configuration and device profile routes."""
 
 from datetime import datetime
-from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 
-from app.api.deps import DbSession, CurrentUser, AdminUser
+from app.api.deps import AdminUser, CurrentUser, DbSession
+from app.config import get_settings
+from app.models.audit import AuditAction, AuditLog, ConfigVersion
 from app.models.sensor import Sensor
-from app.models.audit import ConfigVersion, AuditLog, AuditAction
+from app.services.buffer import buffer_queue
 from app.services.cloud_sync import cloud_sync
 from app.services.csv_engine import csv_generator
-from app.services.buffer import buffer_queue
-from app.config import get_settings
 
 router = APIRouter(prefix="/config", tags=["Configuration"])
 settings = get_settings()
@@ -49,9 +48,9 @@ async def get_device_profile(user: CurrentUser) -> dict[str, Any]:
 async def download_device_profile(user: CurrentUser) -> JSONResponse:
     """Download the device profile as a JSON file."""
     profile = await cloud_sync.generate_device_profile()
-    
+
     filename = f"device-profile-{settings.gateway_name}-{datetime.utcnow().strftime('%Y%m%d')}.json"
-    
+
     return JSONResponse(
         content=profile,
         headers={

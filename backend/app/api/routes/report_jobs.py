@@ -3,9 +3,9 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 
-from app.api.deps import DbSession, CurrentUser
+from app.api.deps import CurrentUser, DbSession
 from app.models.report import ReportJob
-from app.schemas.report import ReportJobCreate, ReportJobUpdate, ReportJobResponse
+from app.schemas.report import ReportJobCreate, ReportJobResponse, ReportJobUpdate
 
 router = APIRouter(prefix="/report-jobs", tags=["Report Jobs"])
 
@@ -42,7 +42,7 @@ async def create_job(
         # Let's say next run is aligned to the start of the next interval block
         next_run_at=datetime.utcnow() + timedelta(minutes=body.interval_minutes),
     )
-    
+
     db.add(job)
     await db.commit()
     await db.refresh(job)
@@ -73,13 +73,13 @@ async def update_job(
         raise HTTPException(status_code=404, detail="Job not found")
 
     update_data = body.model_dump(exclude_unset=True)
-    
+
     for field, value in update_data.items():
         setattr(job, field, value)
-    
-    # Recalculate next run if interval changed? 
+
+    # Recalculate next run if interval changed?
     # For simplicity, we just leave next_run_at as is, unless it's in the past
-    
+
     await db.commit()
     await db.refresh(job)
     return job
@@ -94,6 +94,6 @@ async def delete_job(
     job = await db.get(ReportJob, job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
-    
+
     await db.delete(job)
     await db.commit()

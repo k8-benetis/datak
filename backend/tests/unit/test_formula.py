@@ -3,10 +3,10 @@
 import pytest
 
 from app.core.formula import (
-    validate_formula,
+    FormulaError,
     evaluate_formula,
     test_formula,
-    FormulaError,
+    validate_formula,
 )
 
 

@@ -4,9 +4,9 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
+import yaml
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
-import yaml
 
 
 class Settings(BaseSettings):
@@ -99,7 +99,7 @@ class Settings(BaseSettings):
         print(f"DEBUG: Flattened config keys: {list(flat_config.keys())}")
         if 'api_cors_origins' in flat_config:
              print(f"DEBUG: Found api_cors_origins: {flat_config['api_cors_origins']}")
-        
+
         return cls(**flat_config)
 
 
@@ -111,6 +111,6 @@ def get_settings() -> Settings:
     for path in possible_paths:
         if path.exists():
              return Settings.from_yaml(path)
-    
+
     print("DEBUG: No config file found in search paths")
     return Settings.from_yaml(Path("configs/gateway.yaml"))

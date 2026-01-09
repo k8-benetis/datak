@@ -1,10 +1,10 @@
-from fastapi import APIRouter, HTTPException, status
-from pydantic import BaseModel
-from typing import List, Optional
 import uuid
 
-from app.services.automation import automation_engine, AutomationRule
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+
 from app.api.deps import CurrentUser
+from app.services.automation import AutomationRule, automation_engine
 
 router = APIRouter(prefix="/automation", tags=["Automation"])
 
@@ -24,8 +24,8 @@ class RuleResponse(BaseModel):
     cooldown_s: int
     last_triggered: float
 
-@router.get("/rules", response_model=List[RuleResponse])
-async def get_rules(user: CurrentUser) -> List[RuleResponse]:
+@router.get("/rules", response_model=list[RuleResponse])
+async def get_rules(user: CurrentUser) -> list[RuleResponse]:
     """Get all automation rules."""
     return [
         RuleResponse(
@@ -53,7 +53,7 @@ async def create_rule(rule: RuleCreate, user: CurrentUser) -> RuleResponse:
         cooldown_s=rule.cooldown_s
     )
     automation_engine.add_rule(new_rule)
-    
+
     return RuleResponse(
         id=new_rule.id,
         name=new_rule.name,

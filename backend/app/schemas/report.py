@@ -3,6 +3,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+
 class ReportJobCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     description: str | None = None

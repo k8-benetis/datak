@@ -4,25 +4,24 @@ DaTaK Gateway - Main FastAPI Application Entry Point.
 This is the main entry point for the IoT Edge Gateway service.
 """
 
-import asyncio
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
 
+import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import make_asgi_app
-import structlog
 
+from app.api.routes import auth, automation, config, export, report_jobs, sensors, system, websocket
 from app.config import get_settings
-from app.db.session import init_db, close_db
 from app.db.influx import influx_client
-from app.api.routes import auth, sensors, config, system, websocket, report_jobs, export, automation
-from app.services.orchestrator import orchestrator
+from app.db.session import close_db, init_db
+from app.services.automation import automation_engine
 from app.services.buffer import buffer_queue
-from app.services.csv_engine import csv_generator
 from app.services.cloud_sync import cloud_sync
 from app.services.command_listener import command_listener
-from app.services.automation import automation_engine
+from app.services.csv_engine import csv_generator
+from app.services.orchestrator import orchestrator
 
 # Configure structured logging
 structlog.configure(
@@ -80,10 +79,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     await cloud_sync.start()
     logger.info("Cloud sync started")
-    
+
     await command_listener.start()
     logger.info("Command listener started")
-    
+
     await automation_engine.start()
     logger.info("Automation engine started")
 
@@ -92,9 +91,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("WebSocket callbacks registered")
 
     # Load existing active sensors and start their drivers
+    from sqlalchemy import select
+
     from app.db.session import async_session_factory
     from app.models.sensor import Sensor, SensorProtocol
-    from sqlalchemy import select
 
     async with async_session_factory() as session:
         result = await session.execute(

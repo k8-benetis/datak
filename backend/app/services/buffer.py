@@ -1,16 +1,15 @@
 """Store & Forward buffer for offline resilience."""
 
+import asyncio
 from datetime import datetime
 from typing import Any
-import asyncio
 
-from sqlalchemy import select, update, delete, func
-from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
+from sqlalchemy import delete, func, select, update
 
+from app.db.influx import influx_client
 from app.db.session import async_session_factory
 from app.models.sensor import SensorReading
-from app.db.influx import influx_client
 
 logger = structlog.get_logger()
 
@@ -53,7 +52,7 @@ class BufferQueue:
                 await self._flush_task
             except asyncio.CancelledError:
                 pass
-        
+
         # Final flush attempt
         await self.flush()
         self._log.info("Buffer queue stopped")
@@ -190,7 +189,7 @@ class BufferQueue:
                 )
                 deleted = len(result.all())
                 await session.commit()
-                
+
                 if deleted > 0:
                     self._log.info("Cleaned up synced readings", count=deleted)
                 return deleted
@@ -242,7 +241,7 @@ class BufferQueue:
                 await self.flush()
             except Exception as e:
                 self._log.error("Flush loop error", error=str(e))
-            
+
             await asyncio.sleep(self._flush_interval)
 
 

@@ -1,6 +1,6 @@
 """Security utilities: password hashing, JWT tokens, and authorization."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from argon2 import PasswordHasher
@@ -59,7 +59,7 @@ def create_access_token(
     if expires_delta is None:
         expires_delta = timedelta(minutes=settings.token_expire_minutes)
 
-    expire = datetime.now(timezone.utc) + expires_delta
+    expire = datetime.now(UTC) + expires_delta
     to_encode = data.copy()
     to_encode.update({"exp": expire})
 
@@ -83,7 +83,7 @@ def decode_token(token: str) -> TokenData | None:
         return TokenData(
             sub=payload.get("sub", ""),
             role=payload.get("role", "VIEWER"),
-            exp=datetime.fromtimestamp(payload.get("exp", 0), tz=timezone.utc),
+            exp=datetime.fromtimestamp(payload.get("exp", 0), tz=UTC),
         )
     except JWTError:
         return None

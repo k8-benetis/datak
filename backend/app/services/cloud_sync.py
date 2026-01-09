@@ -2,7 +2,6 @@
 
 from datetime import datetime
 from typing import Any
-import asyncio
 
 import httpx
 import structlog
@@ -199,10 +198,10 @@ class CloudSync:
         if cmd_name == "setOutput":
             # Write to a sensor/actuator
             from app.services.orchestrator import orchestrator
-            
+
             sensor_id = params.get("sensorId")
             value = params.get("value")
-            
+
             if sensor_id and value is not None:
                 status = orchestrator.get_status(sensor_id)
                 if status.get("exists"):
@@ -213,7 +212,7 @@ class CloudSync:
 
         elif cmd_name == "restartSensor":
             from app.services.orchestrator import orchestrator
-            
+
             sensor_id = params.get("sensorId")
             if sensor_id:
                 success = await orchestrator.restart_sensor(sensor_id)

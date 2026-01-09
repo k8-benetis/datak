@@ -4,15 +4,15 @@ from datetime import datetime
 from typing import Any
 
 from fastapi import APIRouter
-from prometheus_client import Counter, Gauge, Histogram, generate_latest, CONTENT_TYPE_LATEST
+from prometheus_client import CONTENT_TYPE_LATEST, Counter, Gauge, Histogram, generate_latest
 from starlette.responses import Response
 
 from app.api.deps import CurrentUser
-from app.services.orchestrator import orchestrator
-from app.services.buffer import buffer_queue
-from app.db.influx import influx_client
 from app.api.routes.websocket import manager as ws_manager
 from app.config import get_settings
+from app.db.influx import influx_client
+from app.services.buffer import buffer_queue
+from app.services.orchestrator import orchestrator
 
 router = APIRouter(prefix="/system", tags=["System"])
 settings = get_settings()
@@ -70,10 +70,10 @@ def update_metrics() -> None:
     all_status = orchestrator.get_all_status()
     online = sum(1 for s in all_status.values() if s.get("connected"))
     offline = len(all_status) - online
-    
+
     SENSORS_ONLINE.set(online)
     SENSORS_OFFLINE.set(offline)
-    
+
     # WebSocket connections
     WEBSOCKET_CONNECTIONS.set(ws_manager.connection_count)
 
@@ -139,7 +139,7 @@ async def health_check() -> dict[str, str]:
 async def get_sensors_summary(user: CurrentUser) -> dict[str, Any]:
     """Get summary of all sensors with their current values."""
     all_status = orchestrator.get_all_status()
-    
+
     summary = []
     for sensor_id, status in all_status.items():
         summary.append({
@@ -149,7 +149,7 @@ async def get_sensors_summary(user: CurrentUser) -> dict[str, Any]:
             "last_value": status.get("last_value"),
             "error_count": status.get("error_count", 0),
         })
-    
+
     return {
         "count": len(summary),
         "sensors": summary,

@@ -142,6 +142,7 @@ async function handleSubmit() {
   showModal.value = false
 }
 
+async function handleDelete(sensor: Sensor) {
   if (confirm(`Delete sensor "${sensor.name}"?`)) {
     await sensorStore.deleteSensor(sensor.id)
   }

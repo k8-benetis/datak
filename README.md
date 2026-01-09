@@ -1,8 +1,18 @@
 # DaTaK - IoT Edge Gateway & Data Aggregator
 
-Industrial IoT gateway for multi-protocol data acquisition (Modbus TCP/RTU, CANbus, MQTT) with local processing, resilient storage, and Digital Twin forwarding.
+<p align="center">
+  <img src="frontend/public/logo.png" alt="DaTaK Logo" width="120" />
+</p>
 
-## Features
+<p align="center">
+  Industrial IoT gateway for multi-protocol data acquisition with local processing, resilient storage, and Digital Twin forwarding.
+  <br />
+  <strong>Developed by <a href="https://robotika.cloud">Robotika</a> - IoT Solutions</strong>
+</p>
+
+---
+
+## ✨ Features
 
 - **Multi-Protocol Support**: Modbus TCP/RTU, CANbus (with DBC parsing), MQTT
 - **Hot-Reload**: Add/remove sensors without service restart
@@ -10,32 +20,74 @@ Industrial IoT gateway for multi-protocol data acquisition (Modbus TCP/RTU, CANb
 - **Statistical Reports**: Automated CSV generation with Min/Max/Avg/StdDev
 - **Secure Formula Engine**: Sandboxed Python expressions for data transformation
 - **Real-time Dashboard**: Vue.js UI with WebSocket updates
-- **Audit Trail**: Full logging of configuration changes
+- **Digital Twin Integration**: MQTT-based forwarding to cloud platforms
+- **Automation Rules**: Local control loops with condition-based triggers
 
-## Quick Start
+---
+
+## 📋 Requirements
+
+### System Requirements
+- **OS**: Linux (Ubuntu 20.04+, Debian 11+) or Windows with WSL2
+- **Docker**: v24.0+ with Docker Compose v2.20+
+- **RAM**: Minimum 2GB, recommended 4GB+
+- **Storage**: Minimum 10GB free space
+
+### Software Dependencies
+- Docker & Docker Compose
+- Git
+- (Optional) Python 3.12+ for local development
+
+---
+
+## 🚀 Quick Start (Docker - Recommended)
+
+The fastest way to get DaTaK running is with Docker:
 
 ```bash
-# Clone repository
+# 1. Clone repository
 git clone https://github.com/k8-benetis/datak.git
 cd datak
 
-# Start infrastructure (InfluxDB, Mosquitto, Prometheus)
-docker-compose -f docker/docker-compose.yml up -d
+# 2. Copy configuration template
+cp configs/gateway.example.yaml configs/gateway.yaml
 
-# Setup Python environment
-cd backend
-python -m venv .venv
-source .venv/bin/activate
-pip install -e ".[dev]"
+# 3. Start all services
+cd docker
+docker compose up -d --build
 
-# Run migrations
-alembic upgrade head
-
-# Start gateway
-python -m app.main
+# 4. Access the application
+# Frontend: http://localhost:5173
+# API Docs: http://localhost:8000/docs
+# Default login: admin / admin
 ```
 
-## Architecture
+---
+
+## 🛠️ Development Setup
+
+For local development without Docker:
+
+```bash
+# Backend
+cd backend
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+pip install -e ".[dev]"
+alembic upgrade head
+python -m app.main
+
+# Frontend (separate terminal)
+cd frontend
+npm install
+npm run dev
+```
+
+> **Note**: You still need InfluxDB and Mosquitto running. Use `docker compose up influxdb mosquitto -d` from the `docker/` folder.
+
+---
+
+## 🏗️ Architecture
 
 ```
 ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
@@ -61,11 +113,13 @@ python -m app.main
          │                      │                      │
 ┌────────▼────────┐  ┌──────────▼──────────┐  ┌───────▼───────┐
 │   InfluxDB      │  │   Digital Twin      │  │   CSV Reports │
-│   (Time-series) │  │   (Cloud)           │  │   (Local)     │
+│   (Time-series) │  │   (MQTT Cloud)      │  │   (Local)     │
 └─────────────────┘  └─────────────────────┘  └───────────────┘
 ```
 
-## Project Structure
+---
+
+## 📁 Project Structure
 
 ```
 datak/
@@ -73,30 +127,44 @@ datak/
 ├── frontend/         # Vue.js 3 dashboard
 ├── docker/           # Docker compose files
 ├── configs/          # Gateway configuration
-├── systemd/          # Service files
-└── docs/             # Documentation
+├── images/           # Logo assets
+└── scripts/          # Deployment utilities
 ```
 
-## Configuration
+---
+
+## ⚙️ Configuration
 
 Copy `configs/gateway.example.yaml` to `configs/gateway.yaml` and adjust:
 
 ```yaml
 gateway:
-  name: "Plant-A-Gateway"
+  name: "My-Gateway"
   
 influxdb:
-  url: "http://localhost:8086"
-  token: "your-token"
+  url: "http://influxdb:8086"
+  token: "datak-dev-token"
   org: "datak"
   bucket: "sensors"
+  retention_days: 30
 
 digital_twin:
   enabled: true
-  endpoint: "https://your-twin.example.com/api"
-  api_key: "your-key"
+  host: "mqtt.your-twin.com"
+  port: 8883
+  topic: "/your/topic/attrs"
 ```
 
-## License
+---
+
+## 📞 Contact & Support
+
+**Robotika** - IoT Solutions  
+- 🌐 Website: [https://robotika.cloud](https://robotika.cloud)  
+- ✉️ Email: [kate@robotika.cloud](mailto:kate@robotika.cloud)
+
+---
+
+## 📄 License
 
 AGPL-3.0 - See [LICENSE](LICENSE) for details.

@@ -17,6 +17,7 @@ class SensorProtocol(str, Enum):
     MODBUS_RTU = "MODBUS_RTU"
     CAN = "CAN"
     MQTT = "MQTT"
+    SYSTEM = "SYSTEM"
     VIRTUAL = "VIRTUAL"  # For testing/simulation
 
 

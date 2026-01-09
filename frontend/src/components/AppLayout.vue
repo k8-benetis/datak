@@ -12,7 +12,8 @@ const navItems = [
   { path: '/sensors', icon: 'pi-wifi', label: 'Sensors' },
   { path: '/reports', icon: 'pi-file', label: 'Reports' },
   { path: '/config', icon: 'pi-cog', label: 'Configuration' },
-  { path: '/report-jobs', icon: 'pi-cog', label: 'Jobs' }, // Added to navItems to replace manual button
+  { path: '/report-jobs', icon: 'pi-calendar', label: 'Jobs' },
+  { path: '/automation', icon: 'pi-bolt', label: 'Automation' },
 ]
 
 function handleLogout() {

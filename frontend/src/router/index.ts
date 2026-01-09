@@ -42,6 +42,12 @@ const routes = [
         meta: { requiresAuth: true }
     },
     {
+        path: '/automation',
+        name: 'Automation',
+        component: () => import('../views/AutomationView.vue'),
+        meta: { requiresAuth: true }
+    },
+    {
         path: '/config',
         name: 'Configuration',
         component: () => import('../views/ConfigView.vue'),

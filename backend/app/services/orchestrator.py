@@ -10,6 +10,7 @@ from app.drivers.base import BaseDriver
 from app.drivers.modbus import ModbusDriver
 from app.drivers.mqtt import MQTTDriver
 from app.drivers.canbus import CANDriver
+from app.drivers.system import SystemDriver
 from app.core.formula import evaluate_formula, FormulaError
 from app.models.sensor import SensorProtocol
 
@@ -21,6 +22,7 @@ DRIVER_CLASSES: dict[str, type[BaseDriver]] = {
     SensorProtocol.MODBUS_RTU.value: ModbusDriver,
     SensorProtocol.CAN.value: CANDriver,
     SensorProtocol.MQTT.value: MQTTDriver,
+    SensorProtocol.SYSTEM.value: SystemDriver,
 }
 
 

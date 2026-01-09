@@ -1,8 +1,10 @@
 
 import asyncio
+import re
 from typing import Any, Callable
 import structlog
 from app.services.orchestrator import orchestrator
+from app.db.influx import influx_client
 from app.core.formula import evaluate_formula
 
 logger = structlog.get_logger()
@@ -40,16 +42,25 @@ class AutomationEngine:
         self._log = logger.bind(component="automation_engine")
         self._rules: dict[str, AutomationRule] = {}
         self._sensor_values: dict[str, float] = {} # name -> value
+        self._stats_values: dict[str, float] = {} # stat_key -> value
         self._running = False
+        self._stats_task: asyncio.Task | None = None
 
     async def start(self) -> None:
         """Start the automation engine."""
         self._running = True
         orchestrator.on_processed_value(self._handle_update)
+        self._stats_task = asyncio.create_task(self._update_stats_loop())
         self._log.info("Automation engine started")
 
     async def stop(self) -> None:
         self._running = False
+        if self._stats_task:
+            self._stats_task.cancel()
+            try:
+                await self._stats_task
+            except asyncio.CancelledError:
+                pass
         self._log.info("Automation engine stopped")
 
     def add_rule(self, rule: AutomationRule) -> None:
@@ -92,7 +103,7 @@ class AutomationEngine:
                 # app.core.formula uses RestrictedPython.
                 
                 # Context dict
-                context = {**self._sensor_values}
+                context = {**self._sensor_values, **self._stats_values}
                 
                 # Simple boolean evaluation
                 # Note: This regex/parsing might be needed if using app.core.formula helpers
@@ -102,7 +113,7 @@ class AutomationEngine:
                 # Implementation using simple eval for MVP with restricted scope
                 # Using empty globals and sensor values as locals
                 allowed_names = {"abs": abs, "max": max, "min": min, "round": round}
-                eval_locals = {**allowed_names, **self._sensor_values}
+                eval_locals = {**allowed_names, **context}
                 
                 is_met = eval(rule.condition, {"__builtins__": {}}, eval_locals)
                 
@@ -114,6 +125,50 @@ class AutomationEngine:
             except Exception as e:
                 # Log only occasionally to avoid spam
                 pass
+
+    async def _update_stats_loop(self) -> None:
+        """Periodically update statistical variables required by rules."""
+        while self._running:
+            try:
+                # 1. Identify required stats from all active rules
+                required_stats = set()
+                pattern = re.compile(r"stat_(\w+)_(\w+)_(\w+)")
+                
+                for rule in self._rules.values():
+                    matches = pattern.findall(rule.condition)
+                    for match in matches:
+                        # Match: (sensor_name, func, window)
+                        # Reconstruct key: stat_Sensor_mean_1h
+                        key = f"stat_{match[0]}_{match[1]}_{match[2]}"
+                        required_stats.add((key, match[0], match[1], match[2]))
+
+                # 2. Query InfluxDB for each
+                for key, sensor, func, window in required_stats:
+                    # Map window to start time (influx/flux format)
+                    # e.g. 1h -> -1h
+                    start_time = f"-{window}"
+                    
+                    # Func mapping: influx returns dict with keys 'mean', 'max', etc.
+                    # We query all stats (efficient enough) or could optimize
+                    stats = await influx_client.query_statistics(
+                        sensor_name=sensor,
+                        start=start_time,
+                        stop="now()"
+                    )
+                    
+                    if stats and func in stats and stats[func] is not None:
+                         val = stats[func]
+                         # Safely cast to float
+                         if isinstance(val, (int, float)):
+                             self._stats_values[key] = float(val)
+
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                self._log.error("Error updating stats", error=str(e))
+            
+            # Update every 30 seconds
+            await asyncio.sleep(30)
 
 # Global instance
 automation_engine = AutomationEngine()

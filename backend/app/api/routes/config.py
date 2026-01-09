@@ -36,6 +36,7 @@ class SystemConfig(BaseModel):
     digital_twin_topic: str
     digital_twin_username: str | None = None
     digital_twin_password: str | None = None
+    digital_twin_entity_type: str = "AgriSensor"
     gateway_name: str | None = None  # Allow renaming gateway
 
 
@@ -50,6 +51,7 @@ async def get_system_config(user: AdminUser) -> SystemConfig:
         digital_twin_topic=settings.digital_twin_topic,
         digital_twin_username=settings.digital_twin_username,
         digital_twin_password=settings.digital_twin_password,
+        digital_twin_entity_type=settings.digital_twin_entity_type,
         gateway_name=settings.gateway_name,
     )
 
@@ -72,6 +74,7 @@ async def update_system_config(
     settings.digital_twin_topic = body.digital_twin_topic
     settings.digital_twin_username = body.digital_twin_username
     settings.digital_twin_password = body.digital_twin_password
+    settings.digital_twin_entity_type = body.digital_twin_entity_type
     if body.gateway_name:
         settings.gateway_name = body.gateway_name
 

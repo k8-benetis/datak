@@ -138,7 +138,7 @@ class CloudSync:
             profile = {
                 "name": settings.gateway_name or "DaTaK Gateway",
                 "description": "Auto-generated profile from DaTaK Gateway sensors",
-                "entityType": "DaTaK_Device",
+                "entityType": settings.digital_twin_entity_type or "AgriSensor",
                 "mappings": []
             }
 

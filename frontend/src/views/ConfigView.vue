@@ -11,8 +11,26 @@ const systemConfig = ref({
   digital_twin_endpoint: '',
   digital_twin_api_key: '',
   digital_twin_timeout: 10,
+  digital_twin_entity_type: 'AgriSensor',
   gateway_name: ''
 })
+const sarefTypes = [
+  'AgriculturalRobot',
+  'AgriSensor',
+  'AgriParcel',
+  'AgriOperation',
+  'AgriculturalTractor',
+  'AgriculturalImplement',
+  'WeatherObserved',
+  'SatelliteImageObservation',
+  'VegetationIndex',
+  'LivestockAnimal',
+  'LivestockGroup',
+  'LivestockFarm',
+  'LivestockProduction',
+  'PhotovoltaicInstallation',
+  'EnergyStorageSystem',
+]
 const savingSystem = ref(false)
 
 onMounted(async () => {
@@ -160,6 +178,14 @@ async function exportConfig() {
           </div>
           
           <template v-if="systemConfig.digital_twin_enabled">
+            <div class="form-group full-width">
+              <label>SAREF4Agri Entity Type</label>
+              <select v-model="systemConfig.digital_twin_entity_type" class="form-input">
+                <option v-for="type in sarefTypes" :key="type" :value="type">{{ type }}</option>
+              </select>
+              <small class="help-text">Select the standardized entity type for this device.</small>
+            </div>
+
             <div class="form-group">
               <label>MQTT Broker Host</label>
               <input v-model="systemConfig.digital_twin_host" class="form-input" type="text" placeholder="mqtt.example.com" />

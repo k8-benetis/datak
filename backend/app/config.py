@@ -50,6 +50,7 @@ class Settings(BaseSettings):
     digital_twin_topic: str = ""
     digital_twin_username: str | None = None
     digital_twin_password: str | None = None
+    digital_twin_entity_type: str = "AgriSensor"
 
     # Security
     jwt_secret: str = "CHANGE-ME-IN-PRODUCTION"
@@ -140,6 +141,7 @@ class Settings(BaseSettings):
                 "topic": self.digital_twin_topic,
                 "username": self.digital_twin_username,
                 "password": self.digital_twin_password,
+                "entity_type": self.digital_twin_entity_type,
             },
             "security": {
                 "jwt_secret": self.jwt_secret,

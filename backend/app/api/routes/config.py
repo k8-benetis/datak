@@ -26,6 +26,69 @@ class ConfigExport(BaseModel):
     include_credentials: bool = False
 
 
+class SystemConfig(BaseModel):
+    """System-wide configuration."""
+    
+    influxdb_retention_days: int
+    digital_twin_enabled: bool
+    digital_twin_endpoint: str
+    digital_twin_api_key: str
+    digital_twin_timeout: int = 10
+    gateway_name: str | None = None  # Allow renaming gateway
+
+
+@router.get("/system")
+async def get_system_config(user: AdminUser) -> SystemConfig:
+    """Get current system configuration."""
+    return SystemConfig(
+        influxdb_retention_days=settings.influxdb_retention_days,
+        digital_twin_enabled=settings.digital_twin_enabled,
+        digital_twin_endpoint=settings.digital_twin_endpoint,
+        digital_twin_api_key=settings.digital_twin_api_key,
+        digital_twin_timeout=settings.digital_twin_timeout,
+        gateway_name=settings.gateway_name,
+    )
+
+
+@router.put("/system")
+async def update_system_config(
+    body: SystemConfig,
+    user: AdminUser,
+) -> SystemConfig:
+    """
+    Update system configuration.
+    
+    Persists changes to configs/gateway.yaml and applies them immediately where possible.
+    """
+    # Update settings
+    settings.influxdb_retention_days = body.influxdb_retention_days
+    settings.digital_twin_enabled = body.digital_twin_enabled
+    settings.digital_twin_endpoint = body.digital_twin_endpoint
+    settings.digital_twin_api_key = body.digital_twin_api_key
+    settings.digital_twin_timeout = body.digital_twin_timeout
+    if body.gateway_name:
+        settings.gateway_name = body.gateway_name
+
+    # Save to file
+    try:
+        settings.save_to_yaml()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save configuration: {e}")
+
+    # Apply InfluxDB retention
+    from app.db.influx import influx_client
+    await influx_client.update_retention_policy(body.influxdb_retention_days)
+
+    # Restart Cloud Sync if needed
+    if body.digital_twin_enabled:
+        await cloud_sync.stop()
+        await cloud_sync.start()
+    else:
+        await cloud_sync.stop()
+
+    return body
+
+
 class ConfigImport(BaseModel):
     """Configuration import request."""
 

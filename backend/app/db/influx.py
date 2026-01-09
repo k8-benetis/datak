@@ -347,6 +347,40 @@ class InfluxDBClient:
     def is_connected(self) -> bool:
         return self._connected
 
+    async def update_retention_policy(self, days: int) -> bool:
+        """Update the retention policy for the sensor bucket."""
+        if not self._client:
+            return False
+            
+        try:
+            buckets_api = self._client.buckets_api()
+            # Find bucket
+            bucket = await buckets_api.find_bucket_by_name(settings.influxdb_bucket)
+            if not bucket:
+                self._log.error("Bucket not found", bucket=settings.influxdb_bucket)
+                return False
+            
+            # Update retention
+            # InfluxDB Client expects BucketRetentionRules objects usually, 
+            # but sometimes accepts dicts depending on version. 
+            # Let's import BucketRetentionRules to be safe if available, or just pass the object update.
+            # Actually, update_bucket takes a Bucket object.
+            
+            from influxdb_client.domain.bucket_retention_rules import BucketRetentionRules
+            
+            # 0 means infinite retention
+            seconds = days * 86400 if days > 0 else 0
+            
+            bucket.retention_rules = [BucketRetentionRules(type="expire", every_seconds=seconds)]
+            
+            await buckets_api.update_bucket(bucket)
+            self._log.info("Updated retention policy", days=days)
+            return True
+            
+        except Exception as e:
+            self._log.error("Failed to update retention", error=str(e))
+            return False
+
 
 # Global client instance
 influx_client = InfluxDBClient()

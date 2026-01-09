@@ -96,11 +96,72 @@ class Settings(BaseSettings):
                     flat_config[full_key] = value
 
         flatten(config)
-        print(f"DEBUG: Flattened config keys: {list(flat_config.keys())}")
-        if 'api_cors_origins' in flat_config:
-             print(f"DEBUG: Found api_cors_origins: {flat_config['api_cors_origins']}")
-
         return cls(**flat_config)
+
+    def save_to_yaml(self) -> None:
+        """Save current settings to YAML config file."""
+        # We need to unflatten usage keys back to nested structure
+        # Identify path
+        path = Path("configs/gateway.yaml")
+        if not path.exists():
+            path = Path("/app/configs/gateway.yaml")
+        
+        # Build dict
+        config = {
+            "gateway": {
+                "name": self.gateway_name,
+                "log_level": self.log_level,
+                "data_dir": str(self.data_dir),
+            },
+            "database": {
+                "url": self.database_url,
+                "echo": self.database_echo,
+            },
+            "influxdb": {
+                "url": self.influxdb_url,
+                "token": self.influxdb_token,
+                "org": self.influxdb_org,
+                "bucket": self.influxdb_bucket,
+                "retention_days": self.influxdb_retention_days,
+            },
+            "mqtt": {
+                "broker": self.mqtt_broker,
+                "port": self.mqtt_port,
+                "client_id": self.mqtt_client_id,
+                "username": self.mqtt_username,
+                "password": self.mqtt_password,
+            },
+            "digital_twin": {
+                "enabled": self.digital_twin_enabled,
+                "endpoint": self.digital_twin_endpoint,
+                "api_key": self.digital_twin_api_key,
+                "timeout": self.digital_twin_timeout,
+            },
+            "security": {
+                "jwt_secret": self.jwt_secret,
+                "jwt_algorithm": self.jwt_algorithm,
+                "token_expire_minutes": self.token_expire_minutes,
+            },
+            "api": {
+                "host": self.api_host,
+                "port": self.api_port,
+                "cors_origins": self.api_cors_origins,
+            },
+            "reports": {
+                "enabled": self.reports_enabled,
+                "output_dir": str(self.reports_output_dir),
+            },
+            "metrics": {
+                "enabled": self.metrics_enabled,
+                "port": self.metrics_port,
+            }
+        }
+
+        with open(path, 'w') as f:
+            yaml.dump(config, f, default_flow_style=False)
+        
+        # Clear cache so next get_settings() reloads
+        get_settings.cache_clear()
 
 
 @lru_cache

@@ -123,60 +123,27 @@ class CloudSync:
                 )
                 sensors = list(result.scalars().all())
 
-            # Build device profile
+            # Build device profile matching user template
             profile = {
-                "id": f"urn:ngsi-ld:Device:{settings.gateway_name}",
-                "type": "Device",
-                "name": settings.gateway_name,
-                "description": "DaTaK IoT Edge Gateway",
-                "createdAt": datetime.utcnow().isoformat() + "Z",
-                "sensors": [],
-                "commands": [],
+                "name": settings.gateway_name or "DaTaK Gateway",
+                "description": "Auto-generated profile from DaTaK Gateway sensors",
+                "entityType": "DaTaK_Device",  # Default type, could be made configurable
+                "mappings": []
             }
 
             for sensor in sensors:
-                sensor_profile = {
-                    "id": f"urn:ngsi-ld:Sensor:{sensor.name}",
-                    "name": sensor.name,
-                    "description": sensor.description or "",
-                    "type": "Sensor",
-                    "protocol": sensor.protocol,
-                    "unit": sensor.unit or "unknown",
-                    "pollIntervalMs": sensor.poll_interval_ms,
-                    "dataType": "number",
-                    "attributes": [
-                        {
-                            "name": sensor.twin_attribute or "value",
-                            "type": "Property",
-                            "unit": sensor.unit or "unknown",
-                        }
-                    ],
+                # Map each sensor to a mapping entry
+                mapping = {
+                    "incoming_key": sensor.name,  # The key we send in payload
+                    "target_attribute": sensor.twin_attribute or sensor.name, # The attribute in DT
+                    "type": "Number",
+                    "transformation": "val"
                 }
+                
+                # If unit is known, maybe format description? 
+                # But template doesn't have unit in mapping, only in description. Use defaults.
 
-                # Add entity mapping if configured
-                if sensor.twin_entity_id:
-                    sensor_profile["entityId"] = sensor.twin_entity_id
-
-                profile["sensors"].append(sensor_profile)
-
-            # Add available commands
-            profile["commands"] = [
-                {
-                    "name": "setOutput",
-                    "description": "Write value to a Modbus register",
-                    "parameters": [
-                        {"name": "sensorId", "type": "integer"},
-                        {"name": "value", "type": "number"},
-                    ],
-                },
-                {
-                    "name": "restartSensor",
-                    "description": "Restart a sensor driver",
-                    "parameters": [
-                        {"name": "sensorId", "type": "integer"},
-                    ],
-                },
-            ]
+                profile["mappings"].append(mapping)
 
             return profile
 

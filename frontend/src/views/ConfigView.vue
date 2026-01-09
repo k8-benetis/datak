@@ -5,13 +5,44 @@ import { api } from '../api'
 const deviceProfile = ref<object | null>(null)
 const bufferStatus = ref({ unsynced_count: 0, synced_count: 0, cloud_available: true })
 const loading = ref(false)
+const systemConfig = ref({
+  influxdb_retention_days: 30,
+  digital_twin_enabled: false,
+  digital_twin_endpoint: '',
+  digital_twin_api_key: '',
+  digital_twin_timeout: 10,
+  gateway_name: ''
+})
+const savingSystem = ref(false)
 
 onMounted(async () => {
   await Promise.all([
     fetchDeviceProfile(),
     fetchBufferStatus(),
+    fetchSystemConfig(),
   ])
 })
+
+async function fetchSystemConfig() {
+  try {
+    const response = await api.get('/api/config/system')
+    systemConfig.value = response.data
+  } catch (e) {
+    console.error('Failed to fetch system config:', e)
+  }
+}
+
+async function saveSystemConfig() {
+  savingSystem.value = true
+  try {
+    await api.put('/api/config/system', systemConfig.value)
+    alert('System configuration saved successfully')
+  } catch (e: any) {
+    alert('Failed to save configuration: ' + (e.response?.data?.detail || e.message))
+  } finally {
+    savingSystem.value = false
+  }
+}
 
 async function fetchDeviceProfile() {
   try {
@@ -44,8 +75,32 @@ async function flushBuffer() {
   }
 }
 
-function downloadProfile() {
-  window.open('/api/config/device-profile/download', '_blank')
+async function downloadProfile() {
+  try {
+    const response = await api.get('/api/config/device-profile/download')
+    // Correctly handle Blob response if configured, or if the API returns JSON, we wrap it.
+    // However, the API returns JSONResponse which axios parses. 
+    // We can just stringify the already fetched profile or fetching the download endpoint.
+    // Actually the download endpoint returns content-disposition but axios might parse JSON body.
+    // Safer to stringify deviceProfile.value directly if we trust it matches.
+    // Or request blob.
+    
+    // Let's rely on stringifying deviceProfile.value which we have.
+    // It is up to date since we fetch it on mount.
+    
+    const blob = new Blob([JSON.stringify(deviceProfile.value, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    // Generate filename
+    const date = new Date().toISOString().split('T')[0].replace(/-/g, '')
+    const name = systemConfig.value.gateway_name || 'datak-gateway'
+    a.download = `device-profile-${name}-${date}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+  } catch (e) {
+    alert('Download failed')
+  }
 }
 
 async function exportConfig() {
@@ -71,6 +126,53 @@ async function exportConfig() {
     </div>
 
     <div class="config-grid">
+      <!-- System Settings -->
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">System Settings</h2>
+          <button 
+            class="btn btn-primary" 
+            @click="saveSystemConfig" 
+            :disabled="savingSystem"
+          >
+            <i :class="['pi', savingSystem ? 'pi-spin pi-spinner' : 'pi-save']"></i>
+            Save Changes
+          </button>
+        </div>
+        
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Gateway Name</label>
+            <input v-model="systemConfig.gateway_name" class="form-input" type="text" placeholder="DaTaK Gateway" />
+          </div>
+          
+          <div class="form-group">
+             <label>Data Retention (Days)</label>
+             <input v-model.number="systemConfig.influxdb_retention_days" class="form-input" type="number" min="1" />
+             <small class="help-text">Data older than this will be automatically deleted from InfluxDB.</small>
+          </div>
+
+          <div class="form-group" style="grid-column: 1 / -1; margin-top: 1rem; border-top: 1px solid var(--border); padding-top: 1rem;">
+             <div class="checkbox-wrapper">
+                <input type="checkbox" id="dt-enabled" v-model="systemConfig.digital_twin_enabled">
+                <label for="dt-enabled" style="font-weight: 600;">Enable Digital Twin Integration</label>
+             </div>
+          </div>
+          
+          <template v-if="systemConfig.digital_twin_enabled">
+            <div class="form-group full-width">
+              <label>Endpoint URL</label>
+              <input v-model="systemConfig.digital_twin_endpoint" class="form-input" type="text" placeholder="https://twin.datak.io" />
+            </div>
+            
+            <div class="form-group full-width">
+              <label>API Key / Token</label>
+              <input v-model="systemConfig.digital_twin_api_key" class="form-input" type="password" placeholder="Key provided by Digital Twin platform" />
+            </div>
+          </template>
+        </div>
+      </div>
+
       <!-- Device Profile -->
       <div class="card">
         <div class="card-header">

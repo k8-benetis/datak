@@ -159,9 +159,10 @@ async def create_sensor(
     try:
         SensorProtocol(body.protocol)
     except ValueError:
+        valid_protocols = [p.value for p in SensorProtocol]
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid protocol. Must be one of: {[p.value for p in SensorProtocol]}",
+            detail=f"Invalid protocol '{body.protocol}'. Must be one of: {valid_protocols}",
         )
 
     # Validate formula

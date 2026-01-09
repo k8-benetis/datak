@@ -21,6 +21,8 @@ from app.services.orchestrator import orchestrator
 from app.services.buffer import buffer_queue
 from app.services.csv_engine import csv_generator
 from app.services.cloud_sync import cloud_sync
+from app.services.command_listener import command_listener
+from app.services.automation import automation_engine
 
 # Configure structured logging
 structlog.configure(
@@ -47,14 +49,6 @@ settings = get_settings()
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
     Application lifespan manager.
-
-    Handles startup and shutdown events for:
-    - Database initialization
-    - InfluxDB connection
-    - Driver orchestrator startup
-    - Buffer queue and CSV generator
-    - Cloud sync service
-    - Graceful shutdown
     """
     logger.info(
         "Starting DaTaK Gateway",
@@ -86,6 +80,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     await cloud_sync.start()
     logger.info("Cloud sync started")
+    
+    await command_listener.start()
+    logger.info("Command listener started")
+    
+    await automation_engine.start()
+    logger.info("Automation engine started")
 
     # Setup WebSocket callbacks
     websocket.setup_websocket_callbacks()
@@ -125,6 +125,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("Shutting down DaTaK Gateway")
 
     # Stop services in reverse order
+    await automation_engine.stop()
+    await command_listener.stop()
     await cloud_sync.stop()
     await csv_generator.stop()
     await buffer_queue.stop()

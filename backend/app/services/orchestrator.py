@@ -167,6 +167,38 @@ class DriverOrchestrator:
             return True
         return False
 
+    async def write_sensor(self, sensor_id: int, value: float) -> bool:
+        """Write a value to a sensor."""
+        driver = self._drivers.get(sensor_id)
+        if not driver:
+            # If virtual sensor (future feature), handled here
+            return False
+
+        if not driver.is_running:
+            return False
+
+        try:
+            return await driver.write(value)
+        except Exception as e:
+            self._log.error("Write failed", sensor_id=sensor_id, error=str(e))
+            raise
+
+    async def write_sensor(self, sensor_id: int, value: float) -> bool:
+        """Write a value to a sensor."""
+        driver = self._drivers.get(sensor_id)
+        if not driver:
+            # If virtual sensor (future feature), handled here
+            return False
+
+        if not driver.is_running:
+            return False
+
+        try:
+            return await driver.write(value)
+        except Exception as e:
+            self._log.error("Write failed", sensor_id=sensor_id, error=str(e))
+            raise
+
     def get_status(self, sensor_id: int) -> dict[str, Any]:
         """Get current status of a sensor."""
         driver = self._drivers.get(sensor_id)
@@ -189,9 +221,19 @@ class DriverOrchestrator:
     # Callback Registration
     # ─────────────────────────────────────────────────────────────
 
+    # ─────────────────────────────────────────────────────────────
+    # Callback Registration
+    # ─────────────────────────────────────────────────────────────
+
     def on_processed_value(self, callback: Any) -> None:
         """Register callback for processed values."""
-        self._on_processed_value = callback
+        if self._on_processed_value is None:
+            self._on_processed_value = []
+        if isinstance(self._on_processed_value, list):
+            self._on_processed_value.append(callback)
+        else:
+             # Handle legacy single callback if any (though we initialized to None typings might be weird)
+             self._on_processed_value = [callback]
 
     def on_sensor_status(self, callback: Any) -> None:
         """Register callback for status changes."""
@@ -221,9 +263,18 @@ class DriverOrchestrator:
             )
             processed_value = raw_value
 
-        # Notify callback
+        # Notify callbacks
         if self._on_processed_value:
-            await self._on_processed_value(sensor_id, raw_value, processed_value, timestamp)
+            # If it's a list (new way)
+            if isinstance(self._on_processed_value, list):
+                for cb in self._on_processed_value:
+                    try:
+                        await cb(sensor_id, raw_value, processed_value, timestamp)
+                    except Exception as e:
+                        self._log.error("Callback failed", error=str(e))
+            # Fallback for single (if any legacy code set it directly, unlikely)
+            elif callable(self._on_processed_value):
+                await self._on_processed_value(sensor_id, raw_value, processed_value, timestamp)
 
     async def _handle_error(self, sensor_id: int, error: str) -> None:
         """Handle driver error."""

@@ -159,6 +159,30 @@ class MQTTDriver(BaseDriver):
             # Not JSON, try to parse as raw number
             return float(payload_str.strip())
 
+    async def write(self, value: float) -> bool:
+        """
+        Publish value to the command topic.
+        
+        Default command topic is {topic}/set unless 'command_topic' is configured.
+        """
+        if not self._client:
+            raise ConnectionError("Not connected")
+
+        command_topic = self.config.get("command_topic", f"{self.topic}/set")
+        
+        try:
+            # Publish as simple value or JSON based on config (simple for now)
+            # Todo: Support json_template if needed
+            payload = str(value)
+            
+            await self._client.publish(command_topic, payload, qos=self.qos)
+            self._log.info("Published command", topic=command_topic, value=value)
+            return True
+            
+        except Exception as e:
+            self._log.error("MQTT publish failed", error=str(e))
+            return False
+
     async def _poll_loop(self) -> None:
         """
         Override poll loop for MQTT.

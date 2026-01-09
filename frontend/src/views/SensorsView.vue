@@ -142,9 +142,34 @@ async function handleSubmit() {
   showModal.value = false
 }
 
-async function handleDelete(sensor: Sensor) {
   if (confirm(`Delete sensor "${sensor.name}"?`)) {
     await sensorStore.deleteSensor(sensor.id)
+  }
+}
+
+// Write / Control Logic
+const showWriteModal = ref(false)
+const writeTarget = ref<Sensor | null>(null)
+const writeValue = ref<number>(0)
+const isWriting = ref(false)
+
+function openWriteModal(sensor: Sensor) {
+  writeTarget.value = sensor
+  writeValue.value = 0
+  showWriteModal.value = true
+}
+
+async function handleWrite() {
+  if (!writeTarget.value) return
+  isWriting.value = true
+  try {
+    await api.post(`/api/sensors/${writeTarget.value.id}/write`, { value: writeValue.value })
+    alert('Command sent successfully')
+    showWriteModal.value = false
+  } catch (e: any) {
+    alert('Write failed: ' + (e.response?.data?.detail || e.message))
+  } finally {
+    isWriting.value = false
   }
 }
 
@@ -190,12 +215,47 @@ function getStatusClass(status: string): string {
           <div class="sensor-unit">{{ sensor.unit || '' }}</div>
         </div>
         <button 
+          v-if="sensor.connection_params?.is_actuator"
+          class="btn btn-primary" 
+          style="margin-right: 0.5rem; padding: 0.5rem 0.75rem;"
+          title="Control Device"
+          @click.stop="openWriteModal(sensor)"
+        >
+          <i class="pi pi-bolt"></i>
+        </button>
+        <button 
           class="btn btn-secondary delete-btn" 
           title="Delete Sensor"
           @click.stop="handleDelete(sensor)"
         >
           <i class="pi pi-trash"></i>
         </button>
+      </div>
+    </div>
+
+    <!-- Write Modal -->
+    <div v-if="showWriteModal" class="modal-overlay" @click.self="showWriteModal = false">
+      <div class="modal-content" style="max-width: 400px;">
+        <div class="modal-header">
+          <h2>Control Device</h2>
+          <button class="btn-close" @click="showWriteModal = false"><i class="pi pi-times"></i></button>
+        </div>
+        <form @submit.prevent="handleWrite" class="modal-body">
+          <p class="text-muted" style="margin-bottom: 1rem;">
+            Sending command to <strong>{{ writeTarget?.name }}</strong> via {{ writeTarget?.protocol }}
+          </p>
+          <div class="form-group">
+            <label class="form-label">Value to Write</label>
+            <input v-model.number="writeValue" type="number" step="any" class="form-input" required autofocus />
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" @click="showWriteModal = false">Cancel</button>
+            <button type="submit" class="btn btn-primary" :disabled="isWriting">
+              <i v-if="isWriting" class="pi pi-spin pi-spinner"></i>
+              {{ isWriting ? 'Sending...' : 'Send Command' }}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
 
@@ -233,6 +293,15 @@ function getStatusClass(status: string): string {
           <div class="form-group">
             <label class="form-label">Description</label>
             <input v-model="formData.description" type="text" class="form-input" />
+          </div>
+
+          <div class="form-group" style="margin-bottom: 1rem;">
+             <label class="check-item" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                <input type="checkbox" v-model="formData.connection_params['is_actuator']">
+                <span>Is Actuator / Controllable?</span>
+                <i class="pi pi-bolt" style="color: var(--primary);"></i>
+             </label>
+             <small class="text-muted">Enables manual control button and automation targeting.</small>
           </div>
 
           <h3 style="margin: 1rem 0 0.75rem; font-size: 0.875rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.5rem;">

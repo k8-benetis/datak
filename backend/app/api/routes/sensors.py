@@ -345,6 +345,34 @@ async def delete_sensor(
     await db.commit()
 
 
+class SensorWriteRequest(BaseModel):
+    """Request schema for writing to a sensor."""
+    value: float
+
+
+@router.post("/{sensor_id}/write")
+async def write_to_sensor(
+    sensor_id: int,
+    body: SensorWriteRequest,
+    user: OperatorUser,
+) -> dict[str, str]:
+    """
+    Write a value to a sensor (actuator).
+    
+    Requires OPERATOR or ADMIN role.
+    """
+    try:
+        success = await orchestrator.write_sensor(sensor_id, body.value)
+        if success:
+            return {"message": "Write successful"}
+        else:
+            raise HTTPException(status_code=500, detail="Write failed (driver returned False)")
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/test-formula", response_model=FormulaTestResponse)
 async def test_formula(
     body: FormulaTestRequest,

@@ -151,12 +151,18 @@ class AutomationEngine:
                 pattern = re.compile(r"stat_(\w+)_(\w+)_(\w+)")
 
                 for rule in self._rules.values():
-                    matches = pattern.findall(rule.condition)
-                    for match in matches:
-                        # Match: (sensor_name, func, window)
-                        # Reconstruct key: stat_Sensor_mean_1h
-                        key = f"stat_{match[0]}_{match[1]}_{match[2]}"
-                        required_stats.add((key, match[0], match[1], match[2]))
+                    # Parse stats from BOTH condition AND target_formula
+                    texts_to_parse = [rule.condition]
+                    if rule.target_formula:
+                        texts_to_parse.append(rule.target_formula)
+                    
+                    for text in texts_to_parse:
+                        matches = pattern.findall(text)
+                        for match in matches:
+                            # Match: (sensor_name, func, window)
+                            # Reconstruct key: stat_Sensor_mean_1h
+                            key = f"stat_{match[0]}_{match[1]}_{match[2]}"
+                            required_stats.add((key, match[0], match[1], match[2]))
 
                 # 2. Query InfluxDB for each
                 for key, sensor, func, window in required_stats:

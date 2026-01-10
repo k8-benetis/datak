@@ -24,10 +24,14 @@ const protocols = [
   { value: 'MQTT', label: 'MQTT' },
   { value: 'CAN', label: 'CANbus' },
   { value: 'SYSTEM', label: 'System Mon (PC)' },
+  { value: 'VIRTUAL_OUTPUT', label: 'Virtual Output (Automation)' },
 ]
 
 // Connection params based on protocol
 const connectionFields = {
+  VIRTUAL_OUTPUT: [
+    { key: 'initial_value', label: 'Initial Value', type: 'number', default: 0, tooltip: 'Starting value before automation writes' },
+  ],
   SYSTEM: [
     { 
       key: 'metric', 

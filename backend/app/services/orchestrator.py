@@ -12,6 +12,7 @@ from app.drivers.canbus import CANDriver
 from app.drivers.modbus import ModbusDriver
 from app.drivers.mqtt import MQTTDriver
 from app.drivers.system import SystemDriver
+from app.drivers.virtual_output import VirtualOutputDriver
 from app.models.sensor import SensorProtocol
 
 logger = structlog.get_logger()
@@ -23,6 +24,7 @@ DRIVER_CLASSES: dict[str, type[BaseDriver]] = {
     SensorProtocol.CAN.value: CANDriver,
     SensorProtocol.MQTT.value: MQTTDriver,
     SensorProtocol.SYSTEM.value: SystemDriver,
+    SensorProtocol.VIRTUAL_OUTPUT.value: VirtualOutputDriver,
 }
 
 

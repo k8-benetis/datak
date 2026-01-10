@@ -19,6 +19,7 @@ class SensorProtocol(str, Enum):
     MQTT = "MQTT"
     SYSTEM = "SYSTEM"
     VIRTUAL = "VIRTUAL"  # For testing/simulation
+    VIRTUAL_OUTPUT = "VIRTUAL_OUTPUT"  # For automation rule outputs
 
 
 class SensorStatus(str, Enum):

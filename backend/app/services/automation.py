@@ -137,9 +137,9 @@ class AutomationEngine:
                     await orchestrator.write_sensor(rule.target_sensor_id, value_to_write)
                     rule.last_triggered = now
 
-            except Exception:
-                # Log only occasionally to avoid spam
-                pass
+            except Exception as e:
+                # Log exception for debugging
+                self._log.warning("Rule evaluation error", rule=rule.name, error=str(e))
 
     async def _update_stats_loop(self) -> None:
         """Periodically update statistical variables required by rules."""

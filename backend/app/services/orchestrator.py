@@ -175,10 +175,11 @@ class DriverOrchestrator:
         """Write a value to a sensor."""
         driver = self._drivers.get(sensor_id)
         if not driver:
-            # If virtual sensor (future feature), handled here
+            self._log.warning("Write failed: driver not found", sensor_id=sensor_id, registered_ids=list(self._drivers.keys()))
             return False
 
         if not driver.is_running:
+            self._log.warning("Write failed: driver not running", sensor_id=sensor_id)
             return False
 
         try:

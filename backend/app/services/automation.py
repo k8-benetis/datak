@@ -164,6 +164,9 @@ class AutomationEngine:
                             key = f"stat_{match[0]}_{match[1]}_{match[2]}"
                             required_stats.add((key, match[0], match[1], match[2]))
 
+                if required_stats:
+                    self._log.info("Stats required", stats=list(required_stats))
+
                 # 2. Query InfluxDB for each
                 for key, sensor, func, window in required_stats:
                     # Map window to start time (influx/flux format)
@@ -177,12 +180,15 @@ class AutomationEngine:
                         start=start_time,
                         stop="now()"
                     )
+                    
+                    self._log.debug("InfluxDB stats query", sensor=sensor, window=window, result=stats)
 
                     if stats and func in stats and stats[func] is not None:
                          val = stats[func]
                          # Safely cast to float
                          if isinstance(val, (int, float)):
                              self._stats_values[key] = float(val)
+                             self._log.info("Stat stored", key=key, value=val)
 
             except asyncio.CancelledError:
                 break

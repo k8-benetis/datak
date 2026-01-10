@@ -8,6 +8,7 @@ from datetime import datetime
 from typing import Any
 
 from app.drivers.base import BaseDriver
+from app.db.influx import influx_client
 
 
 class VirtualOutputDriver(BaseDriver):
@@ -17,7 +18,8 @@ class VirtualOutputDriver(BaseDriver):
     This driver:
     - Does not poll external sources (read returns last written value)
     - Accepts writes from automation engine
-    - Stores value in memory and triggers callbacks for persistence
+    - Stores value in memory and writes directly to InfluxDB
+    - Does NOT trigger automation callbacks to prevent recursion
     
     Configuration:
         {
@@ -51,9 +53,11 @@ class VirtualOutputDriver(BaseDriver):
 
     async def write(self, value: float) -> bool:
         """
-        Store the value and trigger callbacks.
+        Store the value and write directly to InfluxDB.
         
         This is called by the automation engine when a rule triggers.
+        We write directly to InfluxDB to avoid triggering automation
+        callbacks which would cause infinite recursion.
         """
         self._current_value = value
         self._last_write_time = datetime.utcnow()
@@ -63,14 +67,19 @@ class VirtualOutputDriver(BaseDriver):
             value=value,
         )
         
-        # Trigger the value callback to persist to InfluxDB
-        if self._on_value:
-            await self._on_value(
-                self.sensor_id,
-                value,  # raw
-                value,  # processed (same for virtual)
-                self._last_write_time,
+        # Write directly to InfluxDB (bypasses automation callback chain)
+        try:
+            await influx_client.write(
+                sensor_name=self.sensor_name,
+                value=value,
+                raw_value=value,
+                timestamp=self._last_write_time,
             )
+        except Exception as e:
+            self._log.warning("Failed to write to InfluxDB", error=str(e))
+        
+        # Update last_value property for API/UI access
+        self.last_value = value
         
         return True
 

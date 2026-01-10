@@ -9,6 +9,8 @@ from typing import Any
 
 from app.drivers.base import BaseDriver
 from app.db.influx import influx_client
+from app.db.session import async_session_factory
+from app.models.sensor import Sensor
 
 
 class VirtualOutputDriver(BaseDriver):
@@ -19,6 +21,7 @@ class VirtualOutputDriver(BaseDriver):
     - Does not poll external sources (read returns last written value)
     - Accepts writes from automation engine
     - Stores value in memory and writes directly to InfluxDB
+    - Updates SQLite sensor record for UI visibility
     - Does NOT trigger automation callbacks to prevent recursion
     
     Configuration:
@@ -67,7 +70,7 @@ class VirtualOutputDriver(BaseDriver):
             value=value,
         )
         
-        # Write directly to InfluxDB (bypasses automation callback chain)
+        # Write to InfluxDB for time-series history
         try:
             await influx_client.write_sensor_value(
                 sensor_id=self.sensor_id,
@@ -79,7 +82,17 @@ class VirtualOutputDriver(BaseDriver):
         except Exception as e:
             self._log.warning("Failed to write to InfluxDB", error=str(e))
         
-        # Update last_value for API/UI access (use private variable)
+        # Update SQLite sensor record for UI/API visibility
+        try:
+            async with async_session_factory() as session:
+                sensor = await session.get(Sensor, self.sensor_id)
+                if sensor:
+                    sensor.mark_online(value, value)
+                    await session.commit()
+        except Exception as e:
+            self._log.warning("Failed to update sensor in DB", error=str(e))
+        
+        # Update in-memory last_value
         self._last_value = value
         
         return True

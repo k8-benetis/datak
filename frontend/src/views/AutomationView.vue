@@ -10,6 +10,7 @@ interface AutomationRule {
     condition: string
     target_sensor_id: number
     target_value: number
+    target_formula?: string
     cooldown_s: number
     last_triggered: number
 }
@@ -27,6 +28,8 @@ const formData = ref({
     condition: '',
     target_sensor_id: 0,
     target_value: 0,
+    target_formula: '',
+    value_type: 'FIXED', // 'FIXED' | 'FORMULA'
     cooldown_s: 5
 })
 
@@ -72,6 +75,8 @@ function openCreateModal() {
         condition: '', // Example: sensor_Temp1 > 50
         target_sensor_id: actuators.value.length > 0 ? actuators.value[0].id : 0,
         target_value: 0,
+        target_formula: '',
+        value_type: 'FIXED', 
         cooldown_s: 5
     }
     // Set example condition
@@ -83,7 +88,15 @@ function openCreateModal() {
 
 async function handleSubmit() {
     try {
-        await api.post('/api/automation/rules', formData.value)
+        const payload = { ...formData.value }
+        if (payload.value_type === 'FIXED') {
+            payload.target_formula = undefined
+        } else {
+            // Formula mode
+            payload.target_value = 0 // Dummy value for API validation
+        }
+        
+        await api.post('/api/automation/rules', payload)
         await fetchRules()
         showModal.value = false
     } catch (e: any) {
@@ -178,7 +191,9 @@ function insertVariable(varName: string) {
                     <div class="code-block">IF {{ rule.condition }}</div>
                     <div class="arrow"><i class="pi pi-arrow-down"></i></div>
                     <div class="action-block">
-                        THEN Set <strong>Sensor #{{ rule.target_sensor_id }}</strong> to <strong>{{ rule.target_value }}</strong>
+                        THEN Set <strong>Sensor #{{ rule.target_sensor_id }}</strong> to 
+                        <strong v-if="rule.target_formula" class="code-font" style="color: var(--primary);">{{ rule.target_formula }}</strong>
+                        <strong v-else>{{ rule.target_value }}</strong>
                     </div>
                 </div>
                 <div class="rule-footer">
@@ -249,7 +264,30 @@ function insertVariable(varName: string) {
                                 </div>
                                 <div class="form-group">
                                     <label>Set Value To</label>
-                                    <input v-model.number="formData.target_value" type="number" step="any" class="form-input" required>
+                                    <div class="input-group">
+                                        <div class="toggle-group">
+                                            <button type="button" :class="{active: formData.value_type === 'FIXED'}" @click="formData.value_type = 'FIXED'">Fixed</button>
+                                            <button type="button" :class="{active: formData.value_type === 'FORMULA'}" @click="formData.value_type = 'FORMULA'">Formula</button>
+                                        </div>
+                                        
+                                        <input 
+                                            v-if="formData.value_type === 'FIXED'"
+                                            v-model.number="formData.target_value" 
+                                            type="number" 
+                                            step="any" 
+                                            class="form-input" 
+                                            required
+                                        >
+                                        
+                                        <input 
+                                            v-if="formData.value_type === 'FORMULA'"
+                                            v-model="formData.target_formula" 
+                                            type="text" 
+                                            class="form-input code-font" 
+                                            placeholder="(Temp1 * 2) / 100"
+                                            required
+                                        >
+                                    </div>
                                 </div>
                             </div>
 
@@ -403,5 +441,31 @@ function insertVariable(varName: string) {
 .tiny-text {
     font-size: 0.75rem;
     color: var(--text-muted);
+}
+
+.toggle-group {
+    display: flex;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 2px;
+    margin-bottom: 0.5rem;
+    width: fit-content;
+}
+
+.toggle-group button {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    padding: 0.25rem 0.75rem;
+    font-size: 0.85rem;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.toggle-group button.active {
+    background: var(--primary);
+    color: white;
+    font-weight: bold;
 }
 </style>

@@ -18,13 +18,15 @@ class AutomationRule:
         condition: str,
         target_sensor_id: int,
         target_value: float,
-        cooldown_s: int = 5
+        cooldown_s: int = 5,
+        target_formula: str | None = None
     ):
         self.id = rule_id
         self.name = name
         self.condition = condition
         self.target_sensor_id = target_sensor_id
         self.target_value = target_value
+        self.target_formula = target_formula
         self.cooldown_s = cooldown_s
         self.last_triggered = 0.0
 
@@ -120,7 +122,19 @@ class AutomationEngine:
 
                 if is_met:
                     self._log.info("Rule triggered", rule=rule.name, condition=rule.condition)
-                    await orchestrator.write_sensor(rule.target_sensor_id, rule.target_value)
+                    
+                    # Calculate target value
+                    value_to_write = rule.target_value
+                    if rule.target_formula:
+                        try:
+                            # Use same eval context for target formula
+                            value_to_write = float(eval(rule.target_formula, {"__builtins__": {}}, eval_locals))
+                        except Exception as e:
+                            self._log.error("Target formula error", rule=rule.name, error=str(e))
+                            # Fallback or abort? Abort to be safe
+                            return
+
+                    await orchestrator.write_sensor(rule.target_sensor_id, value_to_write)
                     rule.last_triggered = now
 
             except Exception:

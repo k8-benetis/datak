@@ -13,6 +13,7 @@ class RuleCreate(BaseModel):
     condition: str
     target_sensor_id: int
     target_value: float
+    target_formula: str | None = None
     cooldown_s: int = 5
 
 class RuleResponse(BaseModel):
@@ -21,6 +22,7 @@ class RuleResponse(BaseModel):
     condition: str
     target_sensor_id: int
     target_value: float
+    target_formula: str | None
     cooldown_s: int
     last_triggered: float
 
@@ -34,6 +36,7 @@ async def get_rules(user: CurrentUser) -> list[RuleResponse]:
             condition=r.condition,
             target_sensor_id=r.target_sensor_id,
             target_value=r.target_value,
+            target_formula=r.target_formula,
             cooldown_s=r.cooldown_s,
             last_triggered=r.last_triggered
         )
@@ -50,6 +53,7 @@ async def create_rule(rule: RuleCreate, user: CurrentUser) -> RuleResponse:
         condition=rule.condition,
         target_sensor_id=rule.target_sensor_id,
         target_value=rule.target_value,
+        target_formula=rule.target_formula,
         cooldown_s=rule.cooldown_s
     )
     automation_engine.add_rule(new_rule)
@@ -60,6 +64,7 @@ async def create_rule(rule: RuleCreate, user: CurrentUser) -> RuleResponse:
         condition=new_rule.condition,
         target_sensor_id=new_rule.target_sensor_id,
         target_value=new_rule.target_value,
+        target_formula=new_rule.target_formula,
         cooldown_s=new_rule.cooldown_s,
         last_triggered=new_rule.last_triggered
     )

@@ -135,6 +135,7 @@ class AutomationEngine:
                             return
 
                     await orchestrator.write_sensor(rule.target_sensor_id, value_to_write)
+                    self._log.info("Write completed", rule=rule.name, sensor_id=rule.target_sensor_id, value=value_to_write)
                     rule.last_triggered = now
 
             except Exception as e:

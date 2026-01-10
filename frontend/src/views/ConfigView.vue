@@ -33,6 +33,19 @@ const sarefTypes = [
 ]
 const savingSystem = ref(false)
 
+const entityTypeSelect = ref('AgriSensor')
+
+function handleTypeChange() {
+  if (entityTypeSelect.value !== 'Custom') {
+    systemConfig.value.digital_twin_entity_type = entityTypeSelect.value
+  } else {
+    // If switching to custom, keep current value if it's not in the list, or clear if it is
+    if (sarefTypes.includes(systemConfig.value.digital_twin_entity_type)) {
+      systemConfig.value.digital_twin_entity_type = ''
+    }
+  }
+}
+
 onMounted(async () => {
   await Promise.all([
     fetchDeviceProfile(),
@@ -45,6 +58,15 @@ async function fetchSystemConfig() {
   try {
     const response = await api.get('/api/config/system')
     systemConfig.value = response.data
+    
+    // Init dropdown
+    if (systemConfig.value.digital_twin_entity_type) {
+        if (sarefTypes.includes(systemConfig.value.digital_twin_entity_type)) {
+            entityTypeSelect.value = systemConfig.value.digital_twin_entity_type
+        } else {
+            entityTypeSelect.value = 'Custom'
+        }
+    }
   } catch (e) {
     console.error('Failed to fetch system config:', e)
   }
@@ -180,10 +202,24 @@ async function exportConfig() {
           <template v-if="systemConfig.digital_twin_enabled">
             <div class="form-group full-width">
               <label>SAREF4Agri Entity Type</label>
-              <select v-model="systemConfig.digital_twin_entity_type" class="form-input">
-                <option v-for="type in sarefTypes" :key="type" :value="type">{{ type }}</option>
-              </select>
-              <small class="help-text">Select the standardized entity type for this device.</small>
+              <div style="display: flex; gap: 0.5rem;">
+                <select 
+                  v-model="entityTypeSelect" 
+                  class="form-input" 
+                  @change="handleTypeChange"
+                >
+                  <option v-for="type in sarefTypes" :key="type" :value="type">{{ type }}</option>
+                  <option value="Custom">Other / Custom...</option>
+                </select>
+                <input 
+                  v-if="entityTypeSelect === 'Custom'"
+                  v-model="systemConfig.digital_twin_entity_type" 
+                  type="text" 
+                  class="form-input" 
+                  placeholder="e.g. MultiSensorStation"
+                />
+              </div>
+              <small class="help-text">Select a standard type or define a custom one for this gateway.</small>
             </div>
 
             <div class="form-group">

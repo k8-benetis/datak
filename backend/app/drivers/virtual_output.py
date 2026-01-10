@@ -69,7 +69,8 @@ class VirtualOutputDriver(BaseDriver):
         
         # Write directly to InfluxDB (bypasses automation callback chain)
         try:
-            await influx_client.write(
+            await influx_client.write_sensor_value(
+                sensor_id=self.sensor_id,
                 sensor_name=self.sensor_name,
                 value=value,
                 raw_value=value,
@@ -78,8 +79,8 @@ class VirtualOutputDriver(BaseDriver):
         except Exception as e:
             self._log.warning("Failed to write to InfluxDB", error=str(e))
         
-        # Update last_value property for API/UI access
-        self.last_value = value
+        # Update last_value for API/UI access (use private variable)
+        self._last_value = value
         
         return True
 

@@ -99,7 +99,19 @@ class Settings(BaseSettings):
                     flat_config[full_key] = value
 
         flatten(config)
-        return cls(**flat_config)
+        # Drop empty placeholder values so DATAK_* env vars can supply secrets
+        # without being silently overridden by the yaml's blank fields.
+        clean_config = {k: v for k, v in flat_config.items() if v not in (None, "")}
+        settings = cls(**clean_config)
+        settings._validate_runtime_secrets()
+        return settings
+
+    def _validate_runtime_secrets(self) -> None:
+        if self.digital_twin_enabled and not self.digital_twin_password:
+            raise ValueError(
+                "digital_twin.enabled=true but no MQTT password configured. "
+                "Set env var DATAK_DIGITAL_TWIN_PASSWORD (yaml field must stay empty)."
+            )
 
     def save_to_yaml(self) -> None:
         """Save current settings to YAML config file."""

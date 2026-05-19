@@ -65,7 +65,8 @@ logs/
 data/exports/*.csv
 data/exports/*.zip
 
-# DaTaK local gateway config (contains site-specific values)
+# DaTaK runtime config — contains secrets, NEVER commit.
+# Use configs/gateway.example.yaml as template and override via DATAK_* env vars.
 configs/gateway.yaml
 
 # Node (frontend)

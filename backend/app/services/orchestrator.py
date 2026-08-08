@@ -80,6 +80,7 @@ class DriverOrchestrator:
         poll_interval_ms: int = 1000,
         timeout_ms: int = 5000,
         retry_count: int = 3,
+        registers: list[dict[str, Any]] | None = None,
     ) -> bool:
         """
         Add and start a new sensor driver (hot-reload).
@@ -105,7 +106,7 @@ class DriverOrchestrator:
 
         # Create driver
         try:
-            driver = driver_class(
+            driver_kwargs: dict[str, Any] = dict(
                 sensor_id=sensor_id,
                 sensor_name=sensor_name,
                 config=config,
@@ -113,9 +114,16 @@ class DriverOrchestrator:
                 timeout_ms=timeout_ms,
                 retry_count=retry_count,
             )
+            # Pass registers if this is a Modbus driver
+            if registers and driver_class == ModbusDriver:
+                driver_kwargs["registers"] = registers
+
+            driver = driver_class(**driver_kwargs)
 
             # Register callbacks
             driver.on_value(self._handle_value)
+            if hasattr(driver, "on_value_batch"):
+                driver.on_value_batch(self._handle_value_batch)
             driver.on_error(self._handle_error)
             driver.on_status_change(self._handle_status)
 
@@ -237,7 +245,7 @@ class DriverOrchestrator:
         _: float | None,
         timestamp: datetime,
     ) -> None:
-        """Process incoming value from driver."""
+        """Process incoming value from driver (single-register mode)."""
         # Apply formula
         formula = self._formulas.get(sensor_id, "val")
         try:
@@ -252,16 +260,48 @@ class DriverOrchestrator:
 
         # Notify callbacks
         if self._on_processed_value:
-            # If it's a list (new way)
             if isinstance(self._on_processed_value, list):
                 for cb in self._on_processed_value:
                     try:
                         await cb(sensor_id, raw_value, processed_value, timestamp)
                     except Exception as e:
                         self._log.error("Callback failed", error=str(e))
-            # Fallback for single (if any legacy code set it directly, unlikely)
             elif callable(self._on_processed_value):
                 await self._on_processed_value(sensor_id, raw_value, processed_value, timestamp)
+
+    async def _handle_value_batch(
+        self,
+        sensor_id: int,
+        register_readings: list[dict[str, Any]],
+        timestamp: datetime,
+    ) -> None:
+        """Process batch readings from a multi-register sensor."""
+        for reading in register_readings:
+            raw_value = reading["raw_value"]
+            formula = reading.get("formula", "val")
+            try:
+                processed_value = evaluate_formula(formula, raw_value)
+            except FormulaError as e:
+                self._log.warning(
+                    "Formula error, using raw value",
+                    sensor_id=sensor_id,
+                    register_id=reading["register_id"],
+                    error=str(e),
+                )
+                processed_value = raw_value
+
+            # Attach register info to the processed value context
+            reading["processed_value"] = processed_value
+
+            if self._on_processed_value:
+                if isinstance(self._on_processed_value, list):
+                    for cb in self._on_processed_value:
+                        try:
+                            await cb(sensor_id, raw_value, processed_value, timestamp, reading)
+                        except Exception as e:
+                            self._log.error("Callback failed", error=str(e))
+                elif callable(self._on_processed_value):
+                    await cb(sensor_id, raw_value, processed_value, timestamp, reading)
 
     async def _handle_error(self, sensor_id: int, error: str) -> None:
         """Handle driver error."""

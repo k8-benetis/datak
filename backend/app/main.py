@@ -101,15 +101,32 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     from app.models.sensor import Sensor, SensorProtocol
 
     async with async_session_factory() as session:
+        from sqlalchemy.orm import selectinload
+
         result = await session.execute(
             select(Sensor)
+            .options(selectinload(Sensor.registers))
             .where(Sensor.is_active == True)  # noqa: E712
             .where(Sensor.deleted_at == None)  # noqa: E711
         )
         sensors_list = result.scalars().all()
 
         for sensor in sensors_list:
-            if sensor.protocol != SensorProtocol.VIRTUAL.value:
+            if sensor.protocol not in (SensorProtocol.VIRTUAL.value, SensorProtocol.VIRTUAL_OUTPUT.value):
+                register_configs = [
+                    {
+                        "id": r.id,
+                        "name": r.name,
+                        "address": r.address,
+                        "count": r.count,
+                        "register_type": r.register_type,
+                        "data_formula": r.data_formula,
+                        "unit": r.unit,
+                        "decimal_places": r.decimal_places,
+                    }
+                    for r in sensor.registers
+                ] if sensor.registers else None
+
                 await orchestrator.add_sensor(
                     sensor_id=sensor.id,
                     sensor_name=sensor.name,
@@ -119,6 +136,7 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
                     poll_interval_ms=sensor.poll_interval_ms,
                     timeout_ms=sensor.timeout_ms,
                     retry_count=sensor.retry_count,
+                    registers=register_configs,
                 )
 
         logger.info("Loaded active sensors", count=len(sensors_list))

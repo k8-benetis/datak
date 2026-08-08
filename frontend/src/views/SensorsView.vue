@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import { useSensorStore, type Sensor } from '../stores/sensors'
+import { onMounted, ref, computed } from 'vue'
+import { useSensorStore, type Sensor, type Register } from '../stores/sensors'
 import { api } from '../api' // Kept for other potential uses
 import FormulaEditor from '../components/FormulaEditor.vue'
 
@@ -16,6 +16,7 @@ const formData = ref({
   data_formula: 'val',
   unit: '',
   poll_interval_ms: 1000,
+  registers: [] as Register[],
 })
 
 const protocols = [
@@ -52,7 +53,6 @@ const connectionFields = {
     { key: 'host', label: 'Host IP', type: 'text', default: '192.168.1.10', tooltip: 'IP address of the Modbus server' },
     { key: 'port', label: 'Port', type: 'number', default: 502, tooltip: 'TCP port (usually 502)' },
     { key: 'slave_id', label: 'Slave ID', type: 'number', default: 1, tooltip: 'Unit ID (1-247)' },
-    { key: 'address', label: 'Register Address', type: 'number', default: 40001, tooltip: 'Starting register address' },
   ],
   MODBUS_RTU: [
     { key: 'port', label: 'Serial Port', type: 'text', default: '/dev/ttyUSB0', tooltip: 'Device path (e.g. /dev/ttyUSB0)' },
@@ -87,7 +87,6 @@ const connectionFields = {
       default: 8
     },
     { key: 'slave_id', label: 'Slave ID', type: 'number', default: 1 },
-    { key: 'address', label: 'Register Address', type: 'number', default: 40001 },
   ],
   MQTT: [
     { key: 'broker', label: 'Broker Host', type: 'text', default: 'localhost' },
@@ -119,6 +118,7 @@ function openAddModal() {
     data_formula: 'val',
     unit: '',
     poll_interval_ms: 1000,
+    registers: [],
   }
   initConnectionParams('MODBUS_TCP')
   showModal.value = true
@@ -134,6 +134,7 @@ function openEditModal(sensor: Sensor) {
     data_formula: sensor.data_formula,
     unit: sensor.unit || '',
     poll_interval_ms: sensor.poll_interval_ms,
+    registers: sensor.registers ? sensor.registers.map(r => ({ ...r })) : [],
   }
   showModal.value = true
 }
@@ -211,6 +212,27 @@ function getStatusClass(status: string): string {
     case 'ERROR': return 'warning'
     default: return 'unknown'
   }
+}
+
+// Register management
+const showRegisters = computed(() => {
+  return ['MODBUS_TCP', 'MODBUS_RTU'].includes(formData.value.protocol)
+})
+
+function addRegister() {
+  formData.value.registers.push({
+    name: '',
+    address: 0,
+    count: 1,
+    register_type: 'holding',
+    data_formula: 'val',
+    unit: null,
+    decimal_places: 2,
+  })
+}
+
+function removeRegister(index: number) {
+  formData.value.registers.splice(index, 1)
 }
 </script>
 
@@ -395,6 +417,64 @@ function getStatusClass(status: string): string {
             </div>
           </div>
           
+          <!-- Registers section (Modbus only) -->
+          <div v-if="showRegisters" style="margin-top: 1rem;">
+            <h3 style="margin: 0.5rem 0 0.75rem; font-size: 0.875rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.5rem;">
+              📊 Registers
+              <i class="pi pi-info-circle" style="font-size: 0.8rem;" title="Define each register to read from this device."></i>
+            </h3>
+            
+            <div v-if="formData.registers.length === 0" class="text-muted" style="padding: 1rem; border: 1px dashed var(--border); border-radius: 8px; text-align: center; font-size: 0.8rem;">
+              No registers defined yet. Click "Add Register" to define readings.
+            </div>
+
+            <div v-for="(reg, idx) in formData.registers" :key="idx" class="register-row">
+              <div class="form-row">
+                <div class="form-group" style="flex: 0.8;">
+                  <label class="form-label">Name</label>
+                  <input v-model="reg.name" type="text" class="form-input" placeholder="e.g. Temperature" />
+                </div>
+                <div class="form-group" style="flex: 0.8;">
+                  <label class="form-label">Address</label>
+                  <input v-model.number="reg.address" type="number" class="form-input" min="0" />
+                </div>
+                <div class="form-group" style="flex: 0.5;">
+                  <label class="form-label">Count</label>
+                  <input v-model.number="reg.count" type="number" class="form-input" min="1" max="4" />
+                </div>
+                <div class="form-group" style="flex: 0.8;">
+                  <label class="form-label">Type</label>
+                  <select v-model="reg.register_type" class="form-input">
+                    <option value="holding">Holding</option>
+                    <option value="input">Input</option>
+                    <option value="coil">Coil</option>
+                    <option value="discrete">Discrete</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group" style="flex: 1;">
+                  <label class="form-label">Formula</label>
+                  <input v-model="reg.data_formula" type="text" class="form-input" placeholder="val / 10.0" />
+                </div>
+                <div class="form-group" style="flex: 0.6;">
+                  <label class="form-label">Unit</label>
+                  <input v-model="reg.unit" type="text" class="form-input" placeholder="°C" />
+                </div>
+                <div class="form-group" style="flex: 0.3;">
+                  <label class="form-label">&nbsp;</label>
+                  <button type="button" class="btn btn-secondary" @click="removeRegister(idx)" style="padding: 0.5rem 0.75rem; color: #ef4444; border-color: #ef4444;">
+                    <i class="pi pi-trash"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <button type="button" class="btn btn-secondary" @click="addRegister" style="margin-top: 0.5rem; width: 100%;">
+              <i class="pi pi-plus"></i> Add Register
+            </button>
+          </div>
+          
           <div class="form-group">
               <label class="form-label">Unit</label>
               <input v-model="formData.unit" type="text" class="form-input" placeholder="°C, bar, %" />
@@ -492,5 +572,13 @@ function getStatusClass(status: string): string {
   .form-row {
     flex-direction: column;
   }
+}
+
+.register-row {
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
 }
 </style>

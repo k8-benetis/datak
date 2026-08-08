@@ -76,6 +76,9 @@ class BaseDriver(ABC):
         self._on_value: Callable[[int, float, float | None, datetime], Awaitable[None]] | None = (
             None
         )
+        self._on_value_batch: Callable[
+            [int, list[dict[str, Any]], datetime], Awaitable[None]
+        ] | None = None
         self._on_error: Callable[[int, str], Awaitable[None]] | None = None
         self._on_status_change: Callable[[int, str], Awaitable[None]] | None = None
 
@@ -205,6 +208,18 @@ class BaseDriver(ABC):
         """
         self._on_value = callback
 
+    def on_value_batch(
+        self,
+        callback: Callable[[int, list[dict[str, Any]], datetime], Awaitable[None]],
+    ) -> None:
+        """
+        Register callback for batch readings (multi-register sensors).
+
+        Callback signature: (sensor_id, register_readings, timestamp)
+        Each register_reading is: {register_id, name, address, raw_value, ...}
+        """
+        self._on_value_batch = callback
+
     def on_error(self, callback: Callable[[int, str], Awaitable[None]]) -> None:
         """
         Register callback for errors.
@@ -238,24 +253,47 @@ class BaseDriver(ABC):
 
                 # Read value with timeout
                 try:
-                    raw_value = await asyncio.wait_for(
-                        self.read(),
-                        timeout=self.timeout_ms / 1000,
-                    )
+                    # Try batch read first if driver supports it
+                    if (
+                        hasattr(self, "read_registers")
+                        and getattr(self, "_registers", [])
+                        and self._on_value_batch
+                    ):
+                        register_readings = await asyncio.wait_for(
+                            self.read_registers(),  # type: ignore[attr-defined]
+                            timeout=self.timeout_ms / 1000,
+                        )
 
-                    # Success - reset error count
-                    self._error_count = 0
-                    self._last_value = raw_value
-                    self._last_read_time = datetime.utcnow()
+                        self._last_value = (
+                            register_readings[0]["raw_value"] if register_readings else None
+                        )
+                        self._last_read_time = datetime.utcnow()
+                        self._error_count = 0
 
-                    # Notify callback
-                    if self._on_value:
-                        await self._on_value(
+                        await self._on_value_batch(
                             self.sensor_id,
-                            raw_value,
-                            raw_value,
+                            register_readings,
                             self._last_read_time,
                         )
+                    else:
+                        raw_value = await asyncio.wait_for(
+                            self.read(),
+                            timeout=self.timeout_ms / 1000,
+                        )
+
+                        # Success - reset error count
+                        self._error_count = 0
+                        self._last_value = raw_value
+                        self._last_read_time = datetime.utcnow()
+
+                        # Notify callback
+                        if self._on_value:
+                            await self._on_value(
+                                self.sensor_id,
+                                raw_value,
+                                raw_value,
+                                self._last_read_time,
+                            )
 
                     await self._notify_status("ONLINE")
 

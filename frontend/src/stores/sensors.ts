@@ -2,6 +2,20 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { api } from '../api'
 
+export interface Register {
+    id?: number
+    name: string
+    address: number
+    count: number
+    register_type: string
+    data_formula: string
+    unit: string | null
+    decimal_places: number
+    last_value?: number | null
+    last_raw_value?: number | null
+    twin_attribute?: string | null
+}
+
 export interface Sensor {
     id: number
     name: string
@@ -16,6 +30,7 @@ export interface Sensor {
     last_seen?: string
     last_value?: number
     error_count: number
+    registers?: Register[]
 }
 
 export const useSensorStore = defineStore('sensors', () => {

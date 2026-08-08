@@ -41,12 +41,16 @@ class TelemetryPipeline:
         raw_value: float,
         value: float,
         timestamp: datetime,
+        register_ctx: dict | None = None,
     ) -> None:
         if not self._running:
             return
 
         driver = orchestrator._drivers.get(sensor_id)
         sensor_name = driver.sensor_name if driver else f"sensor_{sensor_id}"
+
+        register_id = register_ctx.get("register_id") if register_ctx else None
+        register_name = register_ctx.get("name") if register_ctx else None
 
         # 1) Persist locally (InfluxDB or buffer)
         await buffer_queue.add(
@@ -55,6 +59,8 @@ class TelemetryPipeline:
             value=value,
             raw_value=raw_value,
             timestamp=timestamp,
+            register_id=register_id,
+            register_name=register_name,
         )
 
         # 2) Forward northbound (best-effort)
@@ -63,6 +69,7 @@ class TelemetryPipeline:
             sensor_name=sensor_name,
             value=value,
             timestamp=timestamp,
+            attribute=register_name,
         )
         if not ok:
             self._log.debug("Northbound publish skipped/failed", sensor_id=sensor_id, sensor_name=sensor_name)

@@ -10,7 +10,7 @@ from sqlalchemy import select
 from app.api.deps import CurrentUser, DbSession, OperatorUser
 from app.core.formula import validate_formula
 from app.models.audit import AuditAction, AuditLog
-from app.models.sensor import Sensor, SensorProtocol, SensorStatus
+from app.models.sensor import Sensor, SensorProtocol, SensorRegister, SensorStatus
 from app.services.orchestrator import orchestrator
 
 router = APIRouter(prefix="/sensors", tags=["Sensors"])
@@ -19,6 +19,36 @@ router = APIRouter(prefix="/sensors", tags=["Sensors"])
 # ─────────────────────────────────────────────────────────────
 # Pydantic Schemas
 # ─────────────────────────────────────────────────────────────
+
+
+class RegisterCreate(BaseModel):
+    """Schema for a sensor register."""
+    name: str = Field(..., min_length=1, max_length=100)
+    address: int = Field(..., description="Modbus register address")
+    count: int = Field(default=1, ge=1, le=4)
+    register_type: str = Field(default="holding", description="holding, input, coil, discrete")
+    data_formula: str = Field(default="val")
+    unit: str | None = None
+    decimal_places: int = Field(default=2, ge=0, le=6)
+    twin_attribute: str | None = None
+
+
+class RegisterResponse(BaseModel):
+    """Register response with last value."""
+    id: int
+    name: str
+    address: int
+    count: int
+    register_type: str
+    data_formula: str
+    unit: str | None
+    decimal_places: int
+    last_value: float | None
+    last_raw_value: float | None
+    twin_attribute: str | None
+
+    class Config:
+        from_attributes = True
 
 
 class SensorCreate(BaseModel):
@@ -39,6 +69,7 @@ class SensorCreate(BaseModel):
     poll_interval_ms: int = Field(default=1000, ge=100, le=60000)
     timeout_ms: int = Field(default=5000, ge=1000, le=30000)
     retry_count: int = Field(default=3, ge=1, le=10)
+    registers: list[RegisterCreate] = Field(default_factory=list, description="Register definitions (Modbus sensors)")
     twin_entity_id: str | None = None
     twin_attribute: str | None = None
 
@@ -53,13 +84,14 @@ class SensorUpdate(BaseModel):
     poll_interval_ms: int | None = Field(default=None, ge=100, le=60000)
     timeout_ms: int | None = Field(default=None, ge=1000, le=30000)
     retry_count: int | None = Field(default=None, ge=1, le=10)
+    registers: list[RegisterCreate] | None = None
     is_active: bool | None = None
     twin_entity_id: str | None = None
     twin_attribute: str | None = None
 
 
 class SensorResponse(BaseModel):
-    """Sensor response with status."""
+    """Sensor response with status and registers."""
 
     id: int
     name: str
@@ -78,6 +110,7 @@ class SensorResponse(BaseModel):
     error_count: int
     created_at: datetime
     updated_at: datetime | None
+    registers: list[RegisterResponse] = []
 
     class Config:
         from_attributes = True
@@ -184,6 +217,22 @@ async def create_sensor(
         raise HTTPException(status_code=409, detail="Sensor with this name already exists")
 
     # Create sensor
+    # Create registers
+    register_records: list[SensorRegister] = []
+    for reg in body.registers:
+        register_records.append(
+            SensorRegister(
+                name=reg.name,
+                address=reg.address,
+                count=reg.count,
+                register_type=reg.register_type,
+                data_formula=reg.data_formula,
+                unit=reg.unit,
+                decimal_places=reg.decimal_places,
+                twin_attribute=reg.twin_attribute,
+            )
+        )
+
     sensor = Sensor(
         name=body.name,
         description=body.description,
@@ -197,12 +246,28 @@ async def create_sensor(
         twin_entity_id=body.twin_entity_id,
         twin_attribute=body.twin_attribute,
         status=SensorStatus.UNKNOWN.value,
+        registers=register_records,
     )
     db.add(sensor)
     await db.flush()  # Get ID
 
+    # Build register configs for the driver
+    register_configs = [
+        {
+            "id": r.id,
+            "name": r.name,
+            "address": r.address,
+            "count": r.count,
+            "register_type": r.register_type,
+            "data_formula": r.data_formula,
+            "unit": r.unit,
+            "decimal_places": r.decimal_places,
+        }
+        for r in register_records
+    ]
+
     # Start driver (hot-reload)
-    if body.protocol != SensorProtocol.VIRTUAL.value:
+    if body.protocol not in (SensorProtocol.VIRTUAL.value, SensorProtocol.VIRTUAL_OUTPUT.value):
         await orchestrator.add_sensor(
             sensor_id=sensor.id,
             sensor_name=sensor.name,
@@ -212,6 +277,7 @@ async def create_sensor(
             poll_interval_ms=sensor.poll_interval_ms,
             timeout_ms=sensor.timeout_ms,
             retry_count=sensor.retry_count,
+            registers=register_configs if register_configs else None,
         )
 
     # Audit log
@@ -260,6 +326,31 @@ async def update_sensor(
     # Update fields
     update_data = body.model_dump(exclude_unset=True)
 
+    # Handle registers separately (replace all)
+    if "registers" in update_data:
+        # Delete existing registers
+        from sqlalchemy import delete as sql_delete
+        await db.execute(
+            sql_delete(SensorRegister).where(SensorRegister.sensor_id == sensor.id)
+        )
+        # Create new ones
+        reg_list = update_data.pop("registers")
+        for reg in reg_list:
+            db.add(SensorRegister(
+                sensor_id=sensor.id,
+                name=reg["name"],
+                address=reg["address"],
+                count=reg.get("count", 1),
+                register_type=reg.get("register_type", "holding"),
+                data_formula=reg.get("data_formula", "val"),
+                unit=reg.get("unit"),
+                decimal_places=reg.get("decimal_places", 2),
+                twin_attribute=reg.get("twin_attribute"),
+            ))
+        await db.flush()
+        changes.append("registers")
+        needs_restart = True
+
     for field, value in update_data.items():
         if value is not None and getattr(sensor, field) != value:
             # Validate formula if changing
@@ -278,8 +369,23 @@ async def update_sensor(
     sensor.updated_at = datetime.utcnow()
 
     # Restart driver if needed
-    if needs_restart and sensor.protocol != SensorProtocol.VIRTUAL.value:
+    if needs_restart and sensor.protocol not in (SensorProtocol.VIRTUAL.value, SensorProtocol.VIRTUAL_OUTPUT.value):
         if sensor.is_active:
+            # Rebuild register configs
+            await db.refresh(sensor, ["registers"])
+            register_configs = [
+                {
+                    "id": r.id,
+                    "name": r.name,
+                    "address": r.address,
+                    "count": r.count,
+                    "register_type": r.register_type,
+                    "data_formula": r.data_formula,
+                    "unit": r.unit,
+                    "decimal_places": r.decimal_places,
+                }
+                for r in sensor.registers
+            ]
             await orchestrator.add_sensor(
                 sensor_id=sensor.id,
                 sensor_name=sensor.name,
@@ -289,6 +395,7 @@ async def update_sensor(
                 poll_interval_ms=sensor.poll_interval_ms,
                 timeout_ms=sensor.timeout_ms,
                 retry_count=sensor.retry_count,
+                registers=register_configs if register_configs else None,
             )
         else:
             await orchestrator.remove_sensor(sensor.id)

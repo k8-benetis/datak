@@ -4,8 +4,8 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any
 
-from sqlalchemy import JSON, Float, Index, Integer, String, Text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import JSON, Float, ForeignKey, Index, Integer, String, Text
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, SoftDeleteMixin, TimestampMixin
 
@@ -92,6 +92,14 @@ class Sensor(Base, TimestampMixin, SoftDeleteMixin):
     twin_entity_id: Mapped[str | None] = mapped_column(String(100))
     twin_attribute: Mapped[str | None] = mapped_column(String(50))
 
+    # Relationship: one sensor has many registers
+    registers: Mapped[list["SensorRegister"]] = relationship(
+        "SensorRegister",
+        back_populates="sensor",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+
     def __repr__(self) -> str:
         return f"<Sensor {self.name} [{self.protocol}] - {self.status}>"
 
@@ -119,6 +127,43 @@ class Sensor(Base, TimestampMixin, SoftDeleteMixin):
             self.status = SensorStatus.ERROR.value
 
 
+class SensorRegister(Base, TimestampMixin):
+    """Individual register within a sensor (e.g., temperature at address 0x0000)."""
+
+    __tablename__ = "sensor_registers"
+    __table_args__ = (
+        Index("ix_registers_sensor", "sensor_id"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    sensor_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("sensors.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    address: Mapped[int] = mapped_column(Integer, nullable=False)
+    count: Mapped[int] = mapped_column(Integer, default=1)
+    register_type: Mapped[str] = mapped_column(String(20), default="holding")
+    data_formula: Mapped[str] = mapped_column(String(200), default="val")
+    unit: Mapped[str | None] = mapped_column(String(20))
+    decimal_places: Mapped[int] = mapped_column(default=2)
+
+    # Runtime status
+    last_value: Mapped[float | None] = mapped_column(Float, default=None)
+    last_raw_value: Mapped[float | None] = mapped_column(Float, default=None)
+
+    # Digital Twin mapping
+    twin_attribute: Mapped[str | None] = mapped_column(String(50))
+
+    # Relationship
+    sensor: Mapped["Sensor"] = relationship("Sensor", back_populates="registers")
+
+    def __repr__(self) -> str:
+        return f"<SensorRegister {self.name} addr={self.address} [{self.register_type}]>"
+
+
 class SensorReading(Base):
     """Buffered sensor reading for Store & Forward queue."""
 
@@ -126,11 +171,14 @@ class SensorReading(Base):
     __table_args__ = (
         Index("ix_readings_timestamp", "timestamp"),
         Index("ix_readings_synced", "synced"),
+        Index("ix_readings_register", "register_id"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     sensor_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     sensor_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    register_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    register_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
     timestamp: Mapped[datetime] = mapped_column(nullable=False)
     value: Mapped[float] = mapped_column(Float, nullable=False)
     raw_value: Mapped[float | None] = mapped_column(Float)

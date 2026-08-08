@@ -63,6 +63,8 @@ class BufferQueue:
         value: float,
         raw_value: float | None,
         timestamp: datetime,
+        register_id: int | None = None,
+        register_name: str | None = None,
     ) -> bool:
         """
         Add a reading to the buffer.
@@ -72,12 +74,19 @@ class BufferQueue:
         """
         # Try direct write if cloud is available
         if self._cloud_available and influx_client.is_connected:
+            tags: dict[str, str] = {}
+            if register_id is not None:
+                tags["register_id"] = str(register_id)
+            if register_name:
+                tags["register_name"] = register_name
+
             success = await influx_client.write_sensor_value(
                 sensor_id=sensor_id,
                 sensor_name=sensor_name,
                 value=value,
                 raw_value=raw_value,
                 timestamp=timestamp,
+                tags=tags if tags else None,
             )
             if success:
                 return True
@@ -92,6 +101,8 @@ class BufferQueue:
                 reading = SensorReading(
                     sensor_id=sensor_id,
                     sensor_name=sensor_name,
+                    register_id=register_id,
+                    register_name=register_name,
                     timestamp=timestamp,
                     value=value,
                     raw_value=raw_value,

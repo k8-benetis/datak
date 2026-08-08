@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
 
 import structlog
 
@@ -41,7 +42,7 @@ class TelemetryPipeline:
         raw_value: float,
         value: float,
         timestamp: datetime,
-        register_ctx: dict | None = None,
+        register_ctx: dict[str, Any] | None = None,
     ) -> None:
         if not self._running:
             return

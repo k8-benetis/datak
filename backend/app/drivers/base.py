@@ -260,7 +260,7 @@ class BaseDriver(ABC):
                         and self._on_value_batch
                     ):
                         register_readings = await asyncio.wait_for(
-                            self.read_registers(),  # type: ignore[attr-defined]
+                            self.read_registers(),  # type: ignore[attr-defined,unused-ignore]
                             timeout=self.timeout_ms / 1000,
                         )
 

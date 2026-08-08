@@ -7,7 +7,6 @@ from pymodbus.exceptions import ModbusException
 
 from app.drivers.base import BaseDriver, ConnectionError, ReadError, WriteError
 
-
 # Sentinel to group contiguous registers for batch reading
 _MAX_GAP = 16  # max gap between registers to batch them together
 
@@ -172,7 +171,7 @@ class ModbusDriver(BaseDriver):
         results: list[dict[str, Any]] = []
 
         # Group registers by type, then by contiguous address blocks
-        by_type: dict[str, list[dict]] = {}
+        by_type: dict[str, list[dict[str, Any]]] = {}
         for reg in self._registers:
             rt = reg.get("register_type", "holding")
             by_type.setdefault(rt, []).append(reg)
@@ -181,8 +180,8 @@ class ModbusDriver(BaseDriver):
             regs_sorted = sorted(regs, key=lambda r: r["address"])
 
             # Group into contiguous blocks
-            blocks: list[list[dict]] = []
-            current_block: list[dict] = []
+            blocks: list[list[dict[str, Any]]] = []
+            current_block: list[dict[str, Any]] = []
             prev_end = -999
 
             for reg in regs_sorted:

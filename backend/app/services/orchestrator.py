@@ -106,14 +106,14 @@ class DriverOrchestrator:
 
         # Create driver
         try:
-            driver_kwargs: dict[str, Any] = dict(
-                sensor_id=sensor_id,
-                sensor_name=sensor_name,
-                config=config,
-                poll_interval_ms=poll_interval_ms,
-                timeout_ms=timeout_ms,
-                retry_count=retry_count,
-            )
+            driver_kwargs: dict[str, Any] = {
+                "sensor_id": sensor_id,
+                "sensor_name": sensor_name,
+                "config": config,
+                "poll_interval_ms": poll_interval_ms,
+                "timeout_ms": timeout_ms,
+                "retry_count": retry_count,
+            }
             # Pass registers if this is a Modbus driver
             if registers and driver_class == ModbusDriver:
                 driver_kwargs["registers"] = registers

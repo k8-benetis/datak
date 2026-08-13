@@ -36,8 +36,8 @@ async def test_read_registers_splits_contiguous_block() -> None:
     """Two contiguous holding registers read in one poll must split correctly."""
     driver = _driver(
         [
-            {"id": 11, "name": "temp", "address": 0, "count": 1, "register_type": "holding"},
-            {"id": 12, "name": "hum", "address": 1, "count": 1, "register_type": "holding"},
+            {"id": 11, "name": "temp", "address": 0, "count": 1, "register_type": "holding", "twin_attribute": "airTemperature"},
+            {"id": 12, "name": "hum", "address": 1, "count": 1, "register_type": "holding", "twin_attribute": "relativeHumidity"},
         ]
     )
     driver._client = MagicMock()
@@ -49,6 +49,9 @@ async def test_read_registers_splits_contiguous_block() -> None:
     by_id = {r["register_id"]: r for r in readings}
     assert by_id[11]["raw_value"] == 100.0
     assert by_id[12]["raw_value"] == 200.0
+    # Each reading must carry the SDM attribute it will publish northbound.
+    assert by_id[11]["twin_attribute"] == "airTemperature"
+    assert by_id[12]["twin_attribute"] == "relativeHumidity"
     # A single contiguous block => one Modbus transaction.
     assert driver._client.read_holding_registers.await_count == 1
 

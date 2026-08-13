@@ -231,6 +231,7 @@ class ModbusDriver(BaseDriver):
                         "unit": reg.get("unit"),
                         "formula": reg.get("data_formula", "val"),
                         "decimal_places": reg.get("decimal_places", 2),
+                        "twin_attribute": reg.get("twin_attribute"),
                     })
 
         return results

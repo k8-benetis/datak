@@ -70,7 +70,7 @@ class TelemetryPipeline:
             sensor_name=sensor_name,
             value=value,
             timestamp=timestamp,
-            attribute=register_name,
+            attribute=register_ctx.get("twin_attribute") if register_ctx else None,
         )
         if not ok:
             self._log.debug("Northbound publish skipped/failed", sensor_id=sensor_id, sensor_name=sensor_name)

@@ -122,6 +122,9 @@ class ModbusDriver(BaseDriver):
         self, reg_type: str, address: int, count: int
     ) -> float:
         """Read a single register block and return the decoded float."""
+        if not self._client:
+            raise ReadError("Not connected")
+
         if reg_type == "holding":
             result = await self._client.read_holding_registers(
                 address=address, count=count, slave=self.slave_id,
@@ -240,6 +243,9 @@ class ModbusDriver(BaseDriver):
         self, reg_type: str, address: int, count: int
     ) -> list[int]:
         """Read a block of registers and return raw int values."""
+        if not self._client:
+            raise ReadError("Not connected")
+
         if reg_type == "holding":
             result = await self._client.read_holding_registers(
                 address=address, count=count, slave=self.slave_id,

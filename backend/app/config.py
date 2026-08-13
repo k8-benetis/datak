@@ -53,6 +53,7 @@ class Settings(BaseSettings):
     digital_twin_entity_type: str = "AgriSensor"
 
     # Security
+    production: bool = False  # when True, reject insecure default secrets at startup
     jwt_secret: str = "CHANGE-ME-IN-PRODUCTION"
     jwt_algorithm: str = "HS256"
     token_expire_minutes: int = 1440
@@ -113,13 +114,30 @@ class Settings(BaseSettings):
                 "Set env var DATAK_DIGITAL_TWIN_PASSWORD (yaml field must stay empty)."
             )
 
-    def save_to_yaml(self) -> None:
-        """Save current settings to YAML config file."""
-        # We need to unflatten usage keys back to nested structure
-        # Identify path
-        path = Path("configs/gateway.yaml")
-        if not path.exists():
-            path = Path("/app/configs/gateway.yaml")
+        # In production, refuse to boot with insecure default secrets.
+        if self.production:
+            insecure: list[str] = []
+            if not self.jwt_secret or self.jwt_secret == "CHANGE-ME-IN-PRODUCTION":
+                insecure.append("jwt_secret (set DATAK_JWT_SECRET)")
+            if not self.influxdb_token or self.influxdb_token == "datak-dev-token":
+                insecure.append("influxdb_token (set DATAK_INFLUXDB_TOKEN)")
+            if insecure:
+                raise ValueError(
+                    "production=true but insecure default secrets detected: "
+                    + "; ".join(insecure)
+                )
+
+    def save_to_yaml(self, path: Path | None = None) -> None:
+        """Save current settings to YAML config file.
+
+        Secrets (jwt_secret, influxdb_token, mqtt/digital_twin passwords) are
+        never persisted: they must come from environment variables on each boot
+        (env-first). Pass ``path`` to write elsewhere (used by tests).
+        """
+        if path is None:
+            path = Path("configs/gateway.yaml")
+            if not path.exists():
+                path = Path("/app/configs/gateway.yaml")
 
         # Build dict
         config = {
@@ -134,7 +152,7 @@ class Settings(BaseSettings):
             },
             "influxdb": {
                 "url": self.influxdb_url,
-                "token": self.influxdb_token,
+                "token": None,  # secret: set via DATAK_INFLUXDB_TOKEN
                 "org": self.influxdb_org,
                 "bucket": self.influxdb_bucket,
                 "retention_days": self.influxdb_retention_days,
@@ -144,7 +162,7 @@ class Settings(BaseSettings):
                 "port": self.mqtt_port,
                 "client_id": self.mqtt_client_id,
                 "username": self.mqtt_username,
-                "password": self.mqtt_password,
+                "password": None,  # secret: set via DATAK_MQTT_PASSWORD
             },
             "digital_twin": {
                 "enabled": self.digital_twin_enabled,
@@ -152,11 +170,11 @@ class Settings(BaseSettings):
                 "port": self.digital_twin_port,
                 "topic": self.digital_twin_topic,
                 "username": self.digital_twin_username,
-                "password": self.digital_twin_password,
+                "password": None,  # secret: set via DATAK_DIGITAL_TWIN_PASSWORD
                 "entity_type": self.digital_twin_entity_type,
             },
             "security": {
-                "jwt_secret": self.jwt_secret,
+                "jwt_secret": None,  # secret: set via DATAK_JWT_SECRET
                 "jwt_algorithm": self.jwt_algorithm,
                 "token_expire_minutes": self.token_expire_minutes,
             },

@@ -8,8 +8,6 @@ FIWARE topic format (/<apikey>/<device_id>/attrs).
 import asyncio
 import contextlib
 import json
-import re
-import unicodedata
 from datetime import datetime
 from typing import Any
 
@@ -17,6 +15,7 @@ import aiomqtt
 import structlog
 
 from app.config import get_settings
+from app.core.sdm import get_sdm_attribute as _get_sdm_attribute
 from app.db.session import async_session_factory
 from app.models.sensor import Sensor
 
@@ -26,41 +25,6 @@ settings = get_settings()
 # Maximum reconnect backoff in seconds (caps exponential growth)
 _MAX_BACKOFF = 60
 _BASE_BACKOFF = 5
-
-
-def _slugify(value: str) -> str:
-    """Normalize string to URL-friendly format (e.g., "Sensor 1" -> "sensor_1")."""
-    value = str(value)
-    value = unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode("ascii")
-    value = re.sub(r"[^\w\s-]", "", value).strip().lower()
-    return re.sub(r"[-\s]+", "_", value)
-
-
-def _get_sdm_attribute(name: str) -> str:
-    """
-    Smart Auto-Mapper: infer standard FIWARE Smart Data Model attribute
-    from a human-readable sensor name.
-
-    Falls back to a slugified version for custom/unknown sensors.
-    """
-    n = name.lower()
-
-    mapping = [
-        (["temp", "t_", "termomet"], "airTemperature"),
-        (["hum", "h_", "rh", "humedad"], "relativeHumidity"),
-        (["soil", "tierra", "moist", "suelo"], "soilMoisture"),
-        (["pres", "baro", "atm"], "atmosphericPressure"),
-        (["wind", "viento", "anemo", "speed", "veloc"], "windSpeed"),
-        (["solar", "rad", "sun", "pira", "pyra", "insol"], "solarRadiation"),
-        (["bat", "volt", "bater", "nivel"], "batteryLevel"),
-        (["tilt", "inclin", "angle", "panel_incl"], "panelInclination"),
-    ]
-
-    for keywords, attr in mapping:
-        if any(k in n for k in keywords):
-            return attr
-
-    return _slugify(name)
 
 
 class CloudSync:
@@ -218,17 +182,21 @@ class CloudSync:
             self._reconnecting = False
 
     async def generate_device_profile(self) -> dict[str, Any]:
-        """Generate a device profile JSON compatible with Nekazari SDM Integration.
+        """Generate a device profile JSON for the Nekazari SDM Integration.
 
-        The profile uses ``sdm_entity_type`` (not ``entityType``) and resolves
-        each sensor name through ``_get_sdm_attribute`` so that ``incoming_key``
-        matches what DaTaK actually publishes over MQTT.
+        One mapping per published attribute. Multi-register sensors emit one
+        mapping per register (``incoming_key`` = the SDM attribute DaTaK actually
+        publishes over MQTT); single-register sensors keep one mapping from the
+        sensor name. Identity mapping: ``incoming_key`` == ``target_attribute``.
         """
         try:
             async with async_session_factory() as session:
                 from sqlalchemy import select
+                from sqlalchemy.orm import selectinload
+
                 result = await session.execute(
                     select(Sensor)
+                    .options(selectinload(Sensor.registers))
                     .where(Sensor.is_active == True)  # noqa: E712
                     .where(Sensor.deleted_at == None)  # noqa: E711
                 )
@@ -244,16 +212,26 @@ class CloudSync:
 
             seen: set[str] = set()
             for sensor in sensors:
-                sdm_attr = sensor.twin_attribute or _get_sdm_attribute(sensor.name)
-                if sdm_attr in seen:
-                    continue
-                seen.add(sdm_attr)
-                mappings.append({
-                    "incoming_key": sdm_attr,
-                    "target_attribute": sdm_attr,
-                    "type": "Number",
-                    "transformation": "val",
-                })
+                if sensor.registers:
+                    # Multi-register: one mapping per register.
+                    sdm_attrs = [
+                        reg.twin_attribute or _get_sdm_attribute(reg.name)
+                        for reg in sensor.registers
+                    ]
+                else:
+                    # Single-register (legacy): one mapping from the sensor name.
+                    sdm_attrs = [sensor.twin_attribute or _get_sdm_attribute(sensor.name)]
+
+                for sdm_attr in sdm_attrs:
+                    if sdm_attr in seen:
+                        continue
+                    seen.add(sdm_attr)
+                    mappings.append({
+                        "incoming_key": sdm_attr,
+                        "target_attribute": sdm_attr,
+                        "type": "Number",
+                        "transformation": "val",
+                    })
 
             return profile
 

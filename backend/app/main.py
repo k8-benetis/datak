@@ -97,6 +97,7 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     # Load existing active sensors and start their drivers
     from sqlalchemy import select
 
+    from app.core.sdm import get_sdm_attribute
     from app.db.session import async_session_factory
     from app.models.sensor import Sensor, SensorProtocol
 
@@ -123,6 +124,7 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
                         "data_formula": r.data_formula,
                         "unit": r.unit,
                         "decimal_places": r.decimal_places,
+                        "twin_attribute": r.twin_attribute or get_sdm_attribute(r.name),
                     }
                     for r in sensor.registers
                 ] if sensor.registers else None

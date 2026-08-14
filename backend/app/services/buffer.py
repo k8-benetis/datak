@@ -145,7 +145,8 @@ class BufferQueue:
 
                 self._log.info("Flushing buffer", count=len(readings))
 
-                # Prepare batch
+                # Prepare batch. Preserve register identity so multi-register
+                # readings do not collapse onto each other once written to InfluxDB.
                 batch = [
                     {
                         "sensor_id": r.sensor_id,
@@ -153,6 +154,8 @@ class BufferQueue:
                         "value": r.value,
                         "raw_value": r.raw_value,
                         "timestamp": r.timestamp,
+                        "register_id": r.register_id,
+                        "register_name": r.register_name,
                     }
                     for r in readings
                 ]

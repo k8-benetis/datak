@@ -123,7 +123,9 @@ class InfluxDBClient:
         Write multiple readings in a batch.
 
         Args:
-            readings: List of dicts with keys: sensor_id, sensor_name, value, raw_value, timestamp
+            readings: List of dicts with keys: sensor_id, sensor_name, value,
+                raw_value, timestamp. Optional keys for multi-register sensors:
+                register_id, register_name (written as tags).
 
         Returns:
             Number of successfully written points
@@ -142,6 +144,12 @@ class InfluxDBClient:
 
             if reading.get("raw_value") is not None:
                 point = point.field("raw_value", float(reading["raw_value"]))
+
+            # Multi-register identity (optional; absent for single-register readings)
+            if reading.get("register_id") is not None:
+                point = point.tag("register_id", str(reading["register_id"]))
+            if reading.get("register_name"):
+                point = point.tag("register_name", reading["register_name"])
 
             if reading.get("timestamp"):
                 point = point.time(reading["timestamp"], WritePrecision.MS)

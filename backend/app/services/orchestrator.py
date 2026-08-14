@@ -301,7 +301,9 @@ class DriverOrchestrator:
                         except Exception as e:
                             self._log.error("Callback failed", error=str(e))
                 elif callable(self._on_processed_value):
-                    await cb(sensor_id, raw_value, processed_value, timestamp, reading)
+                    await self._on_processed_value(
+                        sensor_id, raw_value, processed_value, timestamp, reading
+                    )
 
     async def _handle_error(self, sensor_id: int, error: str) -> None:
         """Handle driver error."""

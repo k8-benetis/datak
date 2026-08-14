@@ -9,6 +9,7 @@ from sqlalchemy import select
 
 from app.api.deps import CurrentUser, DbSession, OperatorUser
 from app.core.formula import validate_formula
+from app.core.sdm import get_sdm_attribute
 from app.models.audit import AuditAction, AuditLog
 from app.models.sensor import Sensor, SensorProtocol, SensorRegister, SensorStatus
 from app.services.orchestrator import orchestrator
@@ -262,6 +263,7 @@ async def create_sensor(
             "data_formula": r.data_formula,
             "unit": r.unit,
             "decimal_places": r.decimal_places,
+            "twin_attribute": r.twin_attribute or get_sdm_attribute(r.name),
         }
         for r in register_records
     ]
@@ -383,6 +385,7 @@ async def update_sensor(
                     "data_formula": r.data_formula,
                     "unit": r.unit,
                     "decimal_places": r.decimal_places,
+                    "twin_attribute": r.twin_attribute or get_sdm_attribute(r.name),
                 }
                 for r in sensor.registers
             ]

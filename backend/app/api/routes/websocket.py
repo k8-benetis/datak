@@ -86,22 +86,30 @@ class ConnectionManager:
         raw_value: float | None,
         status: str,
         timestamp: datetime,
+        register_id: int | None = None,
+        register_name: str | None = None,
     ) -> None:
         """
         Send a sensor update to subscribed clients.
 
         Also broadcasts to all clients with a different message type.
         """
+        data: dict[str, Any] = {
+            "sensor_id": sensor_id,
+            "sensor_name": sensor_name,
+            "value": value,
+            "raw_value": raw_value,
+            "status": status,
+            "timestamp": timestamp.isoformat(),
+        }
+        if register_id is not None:
+            data["register_id"] = register_id
+        if register_name is not None:
+            data["register_name"] = register_name
+
         message = {
             "type": "sensor_update",
-            "data": {
-                "sensor_id": sensor_id,
-                "sensor_name": sensor_name,
-                "value": value,
-                "raw_value": raw_value,
-                "status": status,
-                "timestamp": timestamp.isoformat(),
-            },
+            "data": data,
         }
 
         # Send to sensor-specific subscribers
@@ -259,10 +267,6 @@ async def on_sensor_value(
         "timestamp": timestamp.isoformat(),
     }
 
-    if register_ctx:
-        payload["register_id"] = register_ctx.get("register_id")
-        payload["register_name"] = register_ctx.get("name")
-
     await manager.send_sensor_update(
         sensor_id=sensor_id,
         sensor_name=str(register_ctx.get("name")) if register_ctx else f"sensor_{sensor_id}",
@@ -270,6 +274,8 @@ async def on_sensor_value(
         raw_value=raw_value,
         status="ONLINE" if status.get("connected") else "OFFLINE",
         timestamp=timestamp,
+        register_id=register_ctx.get("register_id") if register_ctx else None,
+        register_name=register_ctx.get("name") if register_ctx else None,
     )
 
 

@@ -234,6 +234,68 @@ function addRegister() {
 function removeRegister(index: number) {
   formData.value.registers.splice(index, 1)
 }
+
+// Collapsible row state
+const expandedSensors = ref<Set<number>>(new Set())
+
+function toggleExpand(sensorId: number) {
+  if (expandedSensors.value.has(sensorId)) {
+    expandedSensors.value.delete(sensorId)
+  } else {
+    expandedSensors.value.add(sensorId)
+  }
+}
+
+function isExpanded(sensorId: number): boolean {
+  return expandedSensors.value.has(sensorId)
+}
+
+function formatValue(value: number | undefined | null, decimals = 2): string {
+  if (value === undefined || value === null) return '--'
+  return value.toFixed(decimals)
+}
+
+// WebSocket for live updates on SensorsView
+import { onUnmounted } from 'vue'
+import { createWebSocket } from '../api'
+
+const ws = ref<WebSocket | null>(null)
+
+function connectWebSocket() {
+  ws.value = createWebSocket()
+  if (!ws.value) return
+
+  ws.value.onmessage = (event) => {
+    try {
+      const message = JSON.parse(event.data)
+      if (message.type === 'sensor_update') {
+        sensorStore.updateSensorValue(
+          message.data.sensor_id,
+          message.data.value,
+          message.data.status,
+          message.data.register_id,
+          message.data.register_name
+        )
+      }
+    } catch (e) {
+      console.error('WS parse error:', e)
+    }
+  }
+
+  ws.value.onclose = () => {
+    setTimeout(connectWebSocket, 5000)
+  }
+}
+
+onMounted(() => {
+  connectWebSocket()
+})
+
+onUnmounted(() => {
+  if (ws.value) {
+    ws.value.close()
+  }
+})
 </script>
 
 <template>
@@ -250,39 +312,143 @@ function removeRegister(index: number) {
       <div 
         v-for="sensor in sensorStore.sensors" 
         :key="sensor.id" 
-        class="sensor-item"
-        style="cursor: pointer;"
-        @click="openEditModal(sensor)"
+        class="sensor-card-wrapper"
       >
-        <div :class="['sensor-status', getStatusClass(sensor.status)]"></div>
-        <div class="sensor-info" style="flex: 2;">
-          <div class="sensor-name">{{ sensor.name }}</div>
-          <div class="sensor-protocol">{{ sensor.protocol }} • {{ sensor.description || 'No description' }}</div>
-        </div>
-        <div style="flex: 1; text-align: center;">
-          <div style="font-size: 0.75rem; color: var(--text-muted);">Formula</div>
-          <code style="font-size: 0.875rem;">{{ sensor.data_formula }}</code>
-        </div>
-        <div class="sensor-value">
-          <div class="sensor-reading">{{ sensor.last_value?.toFixed(2) || '--' }}</div>
-          <div class="sensor-unit">{{ sensor.unit || '' }}</div>
-        </div>
-        <button 
-          v-if="sensor.connection_params?.is_actuator"
-          class="btn btn-primary" 
-          style="margin-right: 0.5rem; padding: 0.5rem 0.75rem;"
-          title="Control Device"
-          @click.stop="openWriteModal(sensor)"
+        <div 
+          class="sensor-item"
+          style="cursor: pointer;"
+          @click="toggleExpand(sensor.id)"
         >
-          <i class="pi pi-bolt"></i>
-        </button>
-        <button 
-          class="btn btn-secondary delete-btn" 
-          title="Delete Sensor"
-          @click.stop="handleDelete(sensor)"
-        >
-          <i class="pi pi-trash"></i>
-        </button>
+          <!-- Expand/Collapse Chevron -->
+          <div class="expand-icon" :class="{ 'expanded': isExpanded(sensor.id) }">
+            <i class="pi pi-chevron-right"></i>
+          </div>
+
+          <div :class="['sensor-status', getStatusClass(sensor.status)]"></div>
+          
+          <div class="sensor-info" style="flex: 2;">
+            <div class="sensor-name">{{ sensor.name }}</div>
+            <div class="sensor-protocol">
+              {{ sensor.protocol }}
+              <span v-if="sensor.registers && sensor.registers.length > 0">
+                • {{ sensor.registers.length }} channels
+              </span>
+              <span v-if="sensor.description"> • {{ sensor.description }}</span>
+            </div>
+          </div>
+
+          <!-- Multi-register summary badges OR single formula -->
+          <div class="sensor-summary" style="flex: 2; display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;">
+            <template v-if="sensor.registers && sensor.registers.length > 0">
+              <span 
+                v-for="reg in sensor.registers" 
+                :key="reg.id || reg.name"
+                class="channel-pill"
+              >
+                <span class="pill-name">{{ reg.name }}:</span>
+                <span class="pill-val">{{ formatValue(reg.last_value, reg.decimal_places) }}</span>
+                <span class="pill-unit">{{ reg.unit || '' }}</span>
+              </span>
+            </template>
+            <template v-else>
+              <div style="font-size: 0.75rem; color: var(--text-muted);">
+                Formula: <code style="font-size: 0.85rem;">{{ sensor.data_formula }}</code>
+              </div>
+            </template>
+          </div>
+
+          <!-- Main Value (if single register) -->
+          <div v-if="!sensor.registers || sensor.registers.length === 0" class="sensor-value">
+            <div class="sensor-reading">{{ formatValue(sensor.last_value) }}</div>
+            <div class="sensor-unit">{{ sensor.unit || '' }}</div>
+          </div>
+
+          <!-- Actions -->
+          <div class="sensor-actions" style="display: flex; align-items: center; gap: 0.5rem;" @click.stop>
+            <button 
+              v-if="sensor.connection_params?.is_actuator"
+              class="btn btn-primary" 
+              style="padding: 0.5rem 0.75rem;"
+              title="Control Device"
+              @click="openWriteModal(sensor)"
+            >
+              <i class="pi pi-bolt"></i>
+            </button>
+            <button 
+              class="btn btn-secondary" 
+              style="padding: 0.5rem 0.75rem;"
+              title="Edit Sensor Configuration"
+              @click="openEditModal(sensor)"
+            >
+              <i class="pi pi-pencil"></i>
+            </button>
+            <button 
+              class="btn btn-secondary delete-btn" 
+              title="Delete Sensor"
+              @click="handleDelete(sensor)"
+            >
+              <i class="pi pi-trash"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Collapsible Register Breakdown -->
+        <div v-if="isExpanded(sensor.id)" class="sensor-details-panel">
+          <div v-if="sensor.registers && sensor.registers.length > 0" class="registers-table">
+            <div class="table-header-row">
+              <div class="col-name">Channel / Variable</div>
+              <div class="col-addr">Modbus Register</div>
+              <div class="col-formula">Formula</div>
+              <div class="col-val">Live Value</div>
+              <div class="col-raw">Raw Value</div>
+            </div>
+            <div 
+              v-for="reg in sensor.registers" 
+              :key="reg.id || reg.name" 
+              class="table-data-row"
+            >
+              <div class="col-name">
+                <strong>{{ reg.name }}</strong>
+                <span v-if="reg.twin_attribute" class="sdm-badge">{{ reg.twin_attribute }}</span>
+              </div>
+              <div class="col-addr">
+                <code>{{ reg.register_type }} @ {{ reg.address }}</code>
+              </div>
+              <div class="col-formula">
+                <code>{{ reg.data_formula }}</code>
+              </div>
+              <div class="col-val">
+                <span class="live-val">{{ formatValue(reg.last_value, reg.decimal_places) }}</span>
+                <span class="live-unit">{{ reg.unit || '' }}</span>
+              </div>
+              <div class="col-raw text-muted">
+                {{ reg.last_raw_value !== undefined && reg.last_raw_value !== null ? reg.last_raw_value : '--' }}
+              </div>
+            </div>
+          </div>
+          <div v-else class="single-sensor-details">
+            <div class="detail-item">
+              <span class="detail-label">Protocol:</span>
+              <span class="detail-value">{{ sensor.protocol }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Poll Interval:</span>
+              <span class="detail-value">{{ sensor.poll_interval_ms }} ms</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Formula:</span>
+              <span class="detail-value"><code>{{ sensor.data_formula }}</code></span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Raw Value:</span>
+              <span class="detail-value">{{ sensor.last_raw_value ?? '--' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Transformed Value:</span>
+              <span class="detail-value"><strong>{{ formatValue(sensor.last_value) }} {{ sensor.unit || '' }}</strong></span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -580,5 +746,133 @@ function removeRegister(index: number) {
   border-radius: 8px;
   padding: 0.75rem;
   margin-bottom: 0.5rem;
+}
+
+.sensor-card-wrapper {
+  margin-bottom: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+
+.sensor-card-wrapper:hover {
+  border-color: var(--primary);
+}
+
+.expand-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  color: var(--text-muted);
+  transition: transform 0.2s ease;
+  margin-right: 0.5rem;
+}
+
+.expand-icon.expanded {
+  transform: rotate(90deg);
+  color: var(--primary);
+}
+
+.channel-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+}
+
+.pill-name {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.pill-val {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.pill-unit {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.sensor-details-panel {
+  background: var(--surface-hover);
+  border-top: 1px solid var(--border);
+  padding: 1rem 1.5rem;
+}
+
+.registers-table {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.table-header-row {
+  display: flex;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.table-data-row {
+  display: flex;
+  align-items: center;
+  font-size: 0.875rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px dashed var(--border);
+}
+
+.table-data-row:last-child {
+  border-bottom: none;
+}
+
+.col-name { flex: 2; display: flex; align-items: center; gap: 0.5rem; }
+.col-addr { flex: 1.5; }
+.col-formula { flex: 1; }
+.col-val { flex: 1; font-weight: 600; }
+.col-raw { flex: 1; }
+
+.live-val { color: var(--primary); font-size: 1rem; }
+.live-unit { color: var(--text-muted); margin-left: 0.25rem; }
+
+.sdm-badge {
+  background: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-family: monospace;
+}
+
+.single-sensor-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.75rem;
+  font-size: 0.875rem;
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.detail-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
 }
 </style>

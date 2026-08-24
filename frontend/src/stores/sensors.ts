@@ -104,12 +104,27 @@ export const useSensorStore = defineStore('sensors', () => {
         }
     }
 
-    function updateSensorValue(sensorId: number, value: number, status: string): void {
+    function updateSensorValue(
+        sensorId: number,
+        value: number,
+        status: string,
+        registerId?: number,
+        registerName?: string
+    ): void {
         const sensor = sensors.value.find(s => s.id === sensorId)
         if (sensor) {
             sensor.last_value = value
             sensor.status = status
             sensor.last_seen = new Date().toISOString()
+
+            if (sensor.registers && sensor.registers.length > 0) {
+                const reg = sensor.registers.find(
+                    r => (registerId !== undefined && r.id === registerId) || (registerName && r.name === registerName)
+                )
+                if (reg) {
+                    reg.last_value = value
+                }
+            }
         }
     }
 

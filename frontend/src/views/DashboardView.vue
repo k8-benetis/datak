@@ -33,7 +33,9 @@ function connectWebSocket() {
       sensorStore.updateSensorValue(
         message.data.sensor_id,
         message.data.value,
-        message.data.status
+        message.data.status,
+        message.data.register_id,
+        message.data.register_name
       )
     }
   }

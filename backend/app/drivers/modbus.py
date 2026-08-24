@@ -125,21 +125,33 @@ class ModbusDriver(BaseDriver):
         if not self._client:
             raise ReadError("Not connected")
 
+        # Pymodbus 3.15+ uses device_id, earlier versions use slave
+        unit_kwarg = {"slave": self.slave_id}
+        if hasattr(self._client, "read_holding_registers"):
+            try:
+                # Test if method signature accepts device_id
+                import inspect
+                sig = inspect.signature(self._client.read_holding_registers)
+                if "device_id" in sig.parameters and "slave" not in sig.parameters:
+                    unit_kwarg = {"device_id": self.slave_id}
+            except Exception:
+                pass
+
         if reg_type == "holding":
             result = await self._client.read_holding_registers(
-                address=address, count=count, slave=self.slave_id,
+                address=address, count=count, **unit_kwarg,
             )
         elif reg_type == "input":
             result = await self._client.read_input_registers(
-                address=address, count=count, slave=self.slave_id,
+                address=address, count=count, **unit_kwarg,
             )
         elif reg_type == "coil":
             result = await self._client.read_coils(
-                address=address, count=count, slave=self.slave_id,
+                address=address, count=count, **unit_kwarg,
             )
         elif reg_type == "discrete":
             result = await self._client.read_discrete_inputs(
-                address=address, count=count, slave=self.slave_id,
+                address=address, count=count, **unit_kwarg,
             )
         else:
             raise ReadError(f"Unknown register type: {reg_type}")
@@ -246,22 +258,33 @@ class ModbusDriver(BaseDriver):
         if not self._client:
             raise ReadError("Not connected")
 
+        # Pymodbus 3.15+ uses device_id, earlier versions use slave
+        unit_kwarg = {"slave": self.slave_id}
+        if hasattr(self._client, "read_holding_registers"):
+            try:
+                import inspect
+                sig = inspect.signature(self._client.read_holding_registers)
+                if "device_id" in sig.parameters and "slave" not in sig.parameters:
+                    unit_kwarg = {"device_id": self.slave_id}
+            except Exception:
+                pass
+
         if reg_type == "holding":
             result = await self._client.read_holding_registers(
-                address=address, count=count, slave=self.slave_id,
+                address=address, count=count, **unit_kwarg,
             )
         elif reg_type == "input":
             result = await self._client.read_input_registers(
-                address=address, count=count, slave=self.slave_id,
+                address=address, count=count, **unit_kwarg,
             )
         elif reg_type == "coil":
             result = await self._client.read_coils(
-                address=address, count=count, slave=self.slave_id,
+                address=address, count=count, **unit_kwarg,
             )
             return [int(b) for b in result.bits]
         elif reg_type == "discrete":
             result = await self._client.read_discrete_inputs(
-                address=address, count=count, slave=self.slave_id,
+                address=address, count=count, **unit_kwarg,
             )
             return [int(b) for b in result.bits]
         else:
@@ -281,6 +304,17 @@ class ModbusDriver(BaseDriver):
         if not self._client:
             raise WriteError("Not connected")
 
+        # Pymodbus 3.15+ uses device_id, earlier versions use slave
+        unit_kwarg = {"slave": self.slave_id}
+        if hasattr(self._client, "write_register"):
+            try:
+                import inspect
+                sig = inspect.signature(self._client.write_register)
+                if "device_id" in sig.parameters and "slave" not in sig.parameters:
+                    unit_kwarg = {"device_id": self.slave_id}
+            except Exception:
+                pass
+
         try:
             int_value = int(value)
 
@@ -288,13 +322,13 @@ class ModbusDriver(BaseDriver):
                 result = await self._client.write_register(
                     address=self.address,
                     value=int_value,
-                    slave=self.slave_id,
+                    **unit_kwarg,
                 )
             elif self.register_type == "coil":
                 result = await self._client.write_coil(
                     address=self.address,
                     value=bool(int_value),
-                    slave=self.slave_id,
+                    **unit_kwarg,
                 )
             else:
                 raise WriteError(f"Cannot write to {self.register_type} registers")

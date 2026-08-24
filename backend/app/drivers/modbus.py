@@ -78,6 +78,7 @@ class ModbusDriver(BaseDriver):
                         parity=parity,
                         stopbits=stopbits,
                         bytesize=bytesize,
+                        timeout=0.5,
                     )
                     self._log.info(
                         "Connecting to Modbus RTU",

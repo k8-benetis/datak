@@ -1,5 +1,6 @@
 """Modbus TCP/RTU async driver using pymodbus."""
 
+import asyncio
 from typing import Any
 
 from pymodbus.client import AsyncModbusSerialClient, AsyncModbusTcpClient
@@ -11,34 +12,14 @@ from app.drivers.base import BaseDriver, ConnectionError, ReadError, WriteError
 _MAX_GAP = 16  # max gap between registers to batch them together
 
 
+# Shared client instances and locks for Modbus RTU serial ports (multi-drop bus)
+_SHARED_SERIAL_CLIENTS: dict[str, AsyncModbusSerialClient] = {}
+_SHARED_SERIAL_LOCKS: dict[str, asyncio.Lock] = {}
+
+
 class ModbusDriver(BaseDriver):
     """
     Async Modbus driver supporting both TCP and RTU modes.
-
-    Configuration for TCP:
-        {
-            "mode": "tcp",
-            "host": "192.168.1.10",
-            "port": 502,
-            "slave_id": 1,
-            "address": 40001,
-            "count": 1,
-            "register_type": "holding"  # holding, input, coil, discrete
-        }
-
-    Configuration for RTU:
-        {
-            "mode": "rtu",
-            "port": "/dev/ttyUSB0",
-            "baudrate": 9600,
-            "parity": "N",
-            "stopbits": 1,
-            "bytesize": 8,
-            "slave_id": 1,
-            "address": 40001,
-            "count": 1,
-            "register_type": "holding"
-        }
     """
 
     def __init__(
@@ -61,6 +42,7 @@ class ModbusDriver(BaseDriver):
         self._registers: list[dict[str, Any]] = registers or []
 
         self._client: AsyncModbusTcpClient | AsyncModbusSerialClient | None = None
+        self._serial_lock: asyncio.Lock | None = None
 
     async def connect(self) -> bool:
         """Establish Modbus connection."""
@@ -70,6 +52,8 @@ class ModbusDriver(BaseDriver):
                 port = self.config.get("port", 502)
                 self._client = AsyncModbusTcpClient(host=host, port=port)
                 self._log.info("Connecting to Modbus TCP", host=host, port=port)
+                connected = await self._client.connect()
+                return connected
 
             elif self.mode == "rtu":
                 serial_port = self.config.get("port", "/dev/ttyUSB0")
@@ -78,23 +62,35 @@ class ModbusDriver(BaseDriver):
                 stopbits = self.config.get("stopbits", 1)
                 bytesize = self.config.get("bytesize", 8)
 
-                self._client = AsyncModbusSerialClient(
-                    port=serial_port,
-                    baudrate=baudrate,
-                    parity=parity,
-                    stopbits=stopbits,
-                    bytesize=bytesize,
-                )
-                self._log.info(
-                    "Connecting to Modbus RTU",
-                    port=serial_port,
-                    baudrate=baudrate,
-                )
+                port_key = f"{serial_port}_{baudrate}_{parity}_{stopbits}_{bytesize}"
+                if port_key not in _SHARED_SERIAL_LOCKS:
+                    _SHARED_SERIAL_LOCKS[port_key] = asyncio.Lock()
+                self._serial_lock = _SHARED_SERIAL_LOCKS[port_key]
+
+                async with self._serial_lock:
+                    if port_key in _SHARED_SERIAL_CLIENTS and _SHARED_SERIAL_CLIENTS[port_key].connected:
+                        self._client = _SHARED_SERIAL_CLIENTS[port_key]
+                        return True
+
+                    client = AsyncModbusSerialClient(
+                        port=serial_port,
+                        baudrate=baudrate,
+                        parity=parity,
+                        stopbits=stopbits,
+                        bytesize=bytesize,
+                    )
+                    self._log.info(
+                        "Connecting to Modbus RTU",
+                        port=serial_port,
+                        baudrate=baudrate,
+                    )
+                    connected = await client.connect()
+                    if connected:
+                        _SHARED_SERIAL_CLIENTS[port_key] = client
+                        self._client = client
+                    return connected
             else:
                 raise ConnectionError(f"Unknown Modbus mode: {self.mode}")
-
-            connected = await self._client.connect()
-            return connected
 
         except Exception as e:
             self._log.error("Modbus connection failed", error=str(e))
@@ -102,8 +98,10 @@ class ModbusDriver(BaseDriver):
 
     async def disconnect(self) -> None:
         """Close Modbus connection."""
-        if self._client:
+        if self.mode == "tcp" and self._client:
             self._client.close()
+            self._client = None
+        elif self.mode == "rtu":
             self._client = None
 
     async def read(self) -> float:
@@ -137,24 +135,31 @@ class ModbusDriver(BaseDriver):
             except Exception:
                 pass
 
-        if reg_type == "holding":
-            result = await self._client.read_holding_registers(
-                address=address, count=count, **unit_kwarg,
-            )
-        elif reg_type == "input":
-            result = await self._client.read_input_registers(
-                address=address, count=count, **unit_kwarg,
-            )
-        elif reg_type == "coil":
-            result = await self._client.read_coils(
-                address=address, count=count, **unit_kwarg,
-            )
-        elif reg_type == "discrete":
-            result = await self._client.read_discrete_inputs(
-                address=address, count=count, **unit_kwarg,
-            )
+        async def _do_read():
+            if reg_type == "holding":
+                return await self._client.read_holding_registers(
+                    address=address, count=count, **unit_kwarg,
+                )
+            elif reg_type == "input":
+                return await self._client.read_input_registers(
+                    address=address, count=count, **unit_kwarg,
+                )
+            elif reg_type == "coil":
+                return await self._client.read_coils(
+                    address=address, count=count, **unit_kwarg,
+                )
+            elif reg_type == "discrete":
+                return await self._client.read_discrete_inputs(
+                    address=address, count=count, **unit_kwarg,
+                )
+            else:
+                raise ReadError(f"Unknown register type: {reg_type}")
+
+        if self._serial_lock:
+            async with self._serial_lock:
+                result = await _do_read()
         else:
-            raise ReadError(f"Unknown register type: {reg_type}")
+            result = await _do_read()
 
         if result.isError():
             raise ReadError(f"Modbus error: {result}")
@@ -269,26 +274,36 @@ class ModbusDriver(BaseDriver):
             except Exception:
                 pass
 
-        if reg_type == "holding":
-            result = await self._client.read_holding_registers(
-                address=address, count=count, **unit_kwarg,
-            )
-        elif reg_type == "input":
-            result = await self._client.read_input_registers(
-                address=address, count=count, **unit_kwarg,
-            )
-        elif reg_type == "coil":
-            result = await self._client.read_coils(
-                address=address, count=count, **unit_kwarg,
-            )
-            return [int(b) for b in result.bits]
-        elif reg_type == "discrete":
-            result = await self._client.read_discrete_inputs(
-                address=address, count=count, **unit_kwarg,
-            )
-            return [int(b) for b in result.bits]
+        async def _do_raw_read():
+            if reg_type == "holding":
+                return await self._client.read_holding_registers(
+                    address=address, count=count, **unit_kwarg,
+                )
+            elif reg_type == "input":
+                return await self._client.read_input_registers(
+                    address=address, count=count, **unit_kwarg,
+                )
+            elif reg_type == "coil":
+                res = await self._client.read_coils(
+                    address=address, count=count, **unit_kwarg,
+                )
+                return [int(b) for b in res.bits] if not res.isError() else res
+            elif reg_type == "discrete":
+                res = await self._client.read_discrete_inputs(
+                    address=address, count=count, **unit_kwarg,
+                )
+                return [int(b) for b in res.bits] if not res.isError() else res
+            else:
+                raise ReadError(f"Unknown register type: {reg_type}")
+
+        if self._serial_lock:
+            async with self._serial_lock:
+                result = await _do_raw_read()
         else:
-            raise ReadError(f"Unknown register type: {reg_type}")
+            result = await _do_raw_read()
+
+        if isinstance(result, list):
+            return result
 
         if result.isError():
             raise ReadError(f"Modbus error: {result}")
@@ -318,20 +333,27 @@ class ModbusDriver(BaseDriver):
         try:
             int_value = int(value)
 
-            if self.register_type == "holding":
-                result = await self._client.write_register(
-                    address=self.address,
-                    value=int_value,
-                    **unit_kwarg,
-                )
-            elif self.register_type == "coil":
-                result = await self._client.write_coil(
-                    address=self.address,
-                    value=bool(int_value),
-                    **unit_kwarg,
-                )
+            async def _do_write():
+                if self.register_type == "holding":
+                    return await self._client.write_register(
+                        address=self.address,
+                        value=int_value,
+                        **unit_kwarg,
+                    )
+                elif self.register_type == "coil":
+                    return await self._client.write_coil(
+                        address=self.address,
+                        value=bool(int_value),
+                        **unit_kwarg,
+                    )
+                else:
+                    raise WriteError(f"Cannot write to {self.register_type} registers")
+
+            if self._serial_lock:
+                async with self._serial_lock:
+                    result = await _do_write()
             else:
-                raise WriteError(f"Cannot write to {self.register_type} registers")
+                result = await _do_write()
 
             if result.isError():
                 raise WriteError(f"Modbus write error: {result}")

@@ -75,6 +75,7 @@ class AutomationEngine:
         _raw: float,
         value: float,
         _timestamp: Any,
+        register_ctx: dict[str, Any] | None = None,
     ) -> None:
         if not self._running:
             return
@@ -85,7 +86,11 @@ class AutomationEngine:
         if not driver:
             return
 
-        sensor_name = driver.sensor_name
+        sensor_name = (
+            register_ctx.get("name")
+            if register_ctx and register_ctx.get("name")
+            else driver.sensor_name
+        )
         self._sensor_values[sensor_name] = value
 
         # Evaluate rules

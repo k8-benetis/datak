@@ -12,9 +12,11 @@ from app.drivers.base import BaseDriver, ConnectionError, ReadError, WriteError
 _MAX_GAP = 16  # max gap between registers to batch them together
 
 
-# Shared client instances and locks for Modbus RTU serial ports (multi-drop bus)
+# Shared client instances and locks for Modbus RTU and TCP gateways (multi-drop bus)
 _SHARED_SERIAL_CLIENTS: dict[str, AsyncModbusSerialClient] = {}
 _SHARED_SERIAL_LOCKS: dict[str, asyncio.Lock] = {}
+_SHARED_TCP_CLIENTS: dict[str, AsyncModbusTcpClient] = {}
+_SHARED_TCP_LOCKS: dict[str, asyncio.Lock] = {}
 
 
 class ModbusDriver(BaseDriver):
@@ -50,10 +52,24 @@ class ModbusDriver(BaseDriver):
             if self.mode == "tcp":
                 host = self.config.get("host", "localhost")
                 port = self.config.get("port", 502)
-                self._client = AsyncModbusTcpClient(host=host, port=port)
-                self._log.info("Connecting to Modbus TCP", host=host, port=port)
-                connected = await self._client.connect()
-                return connected
+
+                tcp_key = f"{host}_{port}"
+                if tcp_key not in _SHARED_TCP_LOCKS:
+                    _SHARED_TCP_LOCKS[tcp_key] = asyncio.Lock()
+                self._serial_lock = _SHARED_TCP_LOCKS[tcp_key]
+
+                async with self._serial_lock:
+                    if tcp_key in _SHARED_TCP_CLIENTS and _SHARED_TCP_CLIENTS[tcp_key].connected:
+                        self._client = _SHARED_TCP_CLIENTS[tcp_key]
+                        return True
+
+                    client = AsyncModbusTcpClient(host=host, port=port, timeout=1.0)
+                    self._log.info("Connecting to Modbus TCP", host=host, port=port)
+                    connected = await client.connect()
+                    if connected:
+                        _SHARED_TCP_CLIENTS[tcp_key] = client
+                        self._client = client
+                    return connected
 
             elif self.mode == "rtu":
                 serial_port = self.config.get("port", "/dev/ttyUSB0")

@@ -138,11 +138,11 @@ class ModbusDriver(BaseDriver):
 
         # Pymodbus 3.15+ uses device_id, earlier versions use slave
         unit_kwarg = {"slave": self.slave_id}
-        if hasattr(self._client, "read_holding_registers"):
+        method = getattr(self._client, f"read_{reg_type}_registers", None) or getattr(self._client, "read_holding_registers", None)
+        if method:
             try:
-                # Test if method signature accepts device_id
                 import inspect
-                sig = inspect.signature(self._client.read_holding_registers)
+                sig = inspect.signature(method)
                 if "device_id" in sig.parameters and "slave" not in sig.parameters:
                     unit_kwarg = {"device_id": self.slave_id}
             except Exception:
@@ -278,10 +278,11 @@ class ModbusDriver(BaseDriver):
 
         # Pymodbus 3.15+ uses device_id, earlier versions use slave
         unit_kwarg = {"slave": self.slave_id}
-        if hasattr(self._client, "read_holding_registers"):
+        method = getattr(self._client, f"read_{reg_type}_registers", None) or getattr(self._client, "read_holding_registers", None)
+        if method:
             try:
                 import inspect
-                sig = inspect.signature(self._client.read_holding_registers)
+                sig = inspect.signature(method)
                 if "device_id" in sig.parameters and "slave" not in sig.parameters:
                     unit_kwarg = {"device_id": self.slave_id}
             except Exception:

@@ -115,11 +115,7 @@ class ModbusDriver(BaseDriver):
 
     async def disconnect(self) -> None:
         """Close Modbus connection."""
-        if self.mode == "tcp" and self._client:
-            self._client.close()
-            self._client = None
-        elif self.mode == "rtu":
-            self._client = None
+        self._client = None
 
     async def read(self) -> float:
         """Read single register value from Modbus device (legacy, single-register mode)."""
